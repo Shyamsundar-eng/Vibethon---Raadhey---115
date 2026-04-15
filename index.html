@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AIML Quest — Interactive Visual Learning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -41,24 +43,30 @@
         </div>
       </section>
 
+      <!-- ONBOARDING (Brilliant-style questionnaire) -->
+      <section id="onboardView" class="authWrap hidden">
+        <div class="onboardCard" id="onboardInner"></div>
+      </section>
+
       <!-- APP -->
       <section id="appView" class="appWrap hidden">
-        <aside class="sidebar glass">
+        <aside class="sidebar">
           <nav id="mainNav" class="navList">
-            <button class="navBtn active" data-r="topics" type="button">Topics</button>
+            <button class="navBtn active" data-r="syllabus" type="button">My Path</button>
             <button class="navBtn" data-r="quiz" type="button">Quiz</button>
             <button class="navBtn" data-r="playground" type="button">Playground</button>
             <button class="navBtn" data-r="simulate" type="button">Simulation</button>
             <button class="navBtn" data-r="progress" type="button">Progress</button>
             <button class="navBtn" data-r="leaderboard" type="button">Leaderboard</button>
           </nav>
-          <div class="sideInfo glass">
+          <div class="sideInfo">
             <div class="sideInfoTitle">How to learn here</div>
             <div class="sub">Pick a topic. Drag sliders. Hover components. Watch the math happen live.</div>
           </div>
         </aside>
-        <main class="content glass">
-          <div id="v_topics" class="view"></div>
+        <main class="content">
+          <div id="v_syllabus" class="view"></div>
+          <div id="v_topics" class="view hidden"></div>
           <div id="v_perceptron" class="view hidden"></div>
           <div id="v_nn" class="view hidden"></div>
           <div id="v_dtree" class="view hidden"></div>
@@ -76,6 +84,7 @@
       <div id="tooltip" class="tooltip hidden"></div>
     </div>
 
+    <!-- Chatbot FAB + Panel are injected by app.js -->
     <script src="./app.js"></script>
   </body>
 </html>
