@@ -17,6 +17,13 @@ An interactive web-based platform for learning AIML concepts through **structure
 ## Run locally
 ### Option A: Python (recommended)
 
+Set the Gemini key (required for the AI Tutor / AI quiz features):
+
+```bash
+# PowerShell
+$env:GEMINI_KEY="YOUR_GEMINI_KEY"
+```
+
 ```bash
 python server.py
 ```

@@ -36,23 +36,42 @@ function todayKey() { const d = new Date(); return `${d.getFullYear()}-${String(
 async function sha256(s) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 
 // ── Section 2: Gemini AI Core ───────────────────────────────────
-// ⚠️  SECURITY NOTE: This API key is exposed in client-side code.
-// For a PROTOTYPE/DEMO this is acceptable. For PRODUCTION:
-// 1. Move to a backend server
-// 2. Use environment variables (never commit keys)
-// 3. Create a proxy API endpoint that your frontend calls
-// 4. Backend makes the Gemini call with the serverside key
-// More info: See README.md "Security Notes" section
-const GEMINI_KEY = "AIzaSyBIHEKXsavCDJBZrGwI4Ui3xthcvhGfHs0";
+// Calls go through our tiny backend endpoint `/api/gemini`
+// so the Gemini key is never shipped to the browser.
 const GEMINI_MODELS = ["gemini-2.0-flash-lite","gemini-2.0-flash","gemini-1.5-flash"];
-function geminiUrl(model) { return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`; }
 const _geminiQueue = [];
 let _geminiRunning = false;
 const GEMINI_MIN_GAP = 4200;
 let _lastGeminiCall = 0;
 function _enqueue(fn) { return new Promise((resolve, reject) => { _geminiQueue.push({ fn, resolve, reject }); _drainQueue(); }); }
 async function _drainQueue() { if (_geminiRunning || _geminiQueue.length === 0) return; _geminiRunning = true; const { fn, resolve, reject } = _geminiQueue.shift(); const wait = GEMINI_MIN_GAP - (Date.now() - _lastGeminiCall); if (wait > 0) await new Promise(r => setTimeout(r, wait)); try { resolve(await fn()); } catch (e) { reject(e); } _lastGeminiCall = Date.now(); _geminiRunning = false; _drainQueue(); }
-async function _rawGeminiCall(prompt, maxTokens) { let lastErr = null; for (const model of GEMINI_MODELS) { for (let attempt = 0; attempt < 3; attempt++) { try { const res = await fetch(geminiUrl(model), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: maxTokens, temperature: 0.7 } }) }); if (res.status === 429) { await new Promise(r => setTimeout(r, (attempt + 1) * 3000 + Math.random() * 2000)); continue; } if (!res.ok) { lastErr = new Error(`Gemini ${res.status}`); break; } const data = await res.json(); const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || ""; if (text) return text; lastErr = new Error("Empty"); } catch (err) { lastErr = err; if (attempt < 2) await new Promise(r => setTimeout(r, 2000)); } } } return ""; }
+async function _rawGeminiCall(prompt, maxTokens) {
+  let lastErr = null;
+  for (const model of GEMINI_MODELS) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch("/api/gemini", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, maxTokens, model }),
+        });
+        if (res.status === 429) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 3000 + Math.random() * 2000));
+          continue;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { lastErr = new Error(data?.error?.message || `Gemini ${res.status}`); break; }
+        const text = data?.text || "";
+        if (text) return text;
+        lastErr = new Error("Empty");
+      } catch (err) {
+        lastErr = err;
+        if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+  }
+  return "";
+}
 async function askGemini(prompt, maxTokens = 1024) { return _enqueue(() => _rawGeminiCall(prompt, maxTokens)); }
 async function askGeminiJSON(prompt, maxTokens = 1024) { const raw = await askGemini(prompt + "\n\nRespond ONLY with valid JSON, no markdown fences, no extra text.", maxTokens); if (!raw) return null; const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim(); try { return JSON.parse(cleaned); } catch { return null; } }
 async function generateAIQuiz(topic, level, count = 5) { const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" for a ${level}-level AI/ML student. Return JSON array of objects with keys: "prompt" (question), "opts" (array of 4 {id,t} objects), "ans" (correct id), "why" (1 sentence explanation)`; return await askGeminiJSON(prompt, 1200); }
