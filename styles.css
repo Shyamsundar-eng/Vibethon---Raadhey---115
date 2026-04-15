@@ -589,6 +589,25 @@ canvas { display: block; }
   .topicGrid { grid-template-columns: 1fr; }
   .topbar { padding: 0 14px; }
   .content { padding: 16px 12px; }
+  .panel { padding: 14px; }
+  .resumeCard { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .heatmapHeader { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .learnGrid { grid-template-columns: 1fr; gap: 12px; }
+  .learnCard { padding: 16px; }
+  .gamesGrid { grid-template-columns: 1fr; gap: 12px; }
+  .gameCard { padding: 18px; }
+  .stNode { padding: 14px 14px; gap: 12px; }
+  .topicHeader { flex-direction: column; align-items: flex-start; }
+  .topicProgress { flex-direction: column; align-items: stretch; gap: 8px; }
+}
+
+@media (max-width: 420px) {
+  .brandTag { display: none; }
+  .brandName { font-size: 15px; }
+  .chip { display: none !important; }
+  .topActions { gap: 6px; }
+  .btn { padding: 9px 14px; }
+  .btn.sm { padding: 7px 12px; }
 }
 
 /* ── AI TUTOR CHATBOT ──────────────────────────────────────── */
