@@ -196,6 +196,13 @@ function showOnboard() {
 
 // ── Section 5: Master Topics Data ───────────────────────────────
 const TOPICS = [
+  { id:"basics", icon:"📚", title:"AI/ML Basics", desc:"The core concepts you’ll need before any model: data, training, evaluation, and pitfalls", level:"Beginner", category:"Foundations",
+    subtopics:[
+      { id:"basics_1", title:"What is ML?", desc:"From rules to learning patterns from data" },
+      { id:"basics_2", title:"Data, Features, Labels", desc:"What the model actually sees and learns from" },
+      { id:"basics_3", title:"Train/Test + Overfitting", desc:"Generalization, leakage, and why accuracy can lie" },
+      { id:"basics_4", title:"Interactive Visualizer", desc:"Bias–variance intuition with a slider" }
+    ]},
   { id:"linreg", icon:"📈", title:"Linear Regression", desc:"Fit a line to data and predict continuous values", level:"Beginner", category:"Supervised",
     subtopics:[
       { id:"linreg_1", title:"What is Regression?", desc:"Understanding prediction of continuous values" },
@@ -311,6 +318,7 @@ const TOPICS = [
 ];
 
 const VISUALIZER_MAP = {
+  basics_4: "basics",
   linreg_4: "linreg",
   perceptron_4: "perceptron",
   nn_4: "nn",
@@ -482,6 +490,7 @@ function renderDashboard(user) {
     const subs = t.subtopics;
     return subs.every(s => user.prog.mods[s.id]);
   }).length;
+  const totalTopics = TOPICS.length || 1;
   const acts = rLS(LS_ACT, []).filter(a => a.uid === user.id).slice(-5).reverse();
 
   const nextTopic = TOPICS.find(t => !t.subtopics.every(s => user.prog.mods[s.id]));
@@ -491,7 +500,7 @@ function renderDashboard(user) {
     <div class="dashGrid">
       <div class="statCard"><div class="statVal">${user.pts || 0}</div><div class="statLabel">Points</div></div>
       <div class="statCard"><div class="statVal">${user.streak?.n || 0}</div><div class="statLabel">Day Streak</div></div>
-      <div class="statCard"><div class="statVal">${topicsDone}/16</div><div class="statLabel">Topics Done</div></div>
+      <div class="statCard"><div class="statVal">${topicsDone}/${totalTopics}</div><div class="statLabel">Topics Done</div></div>
       <div class="statCard"><div class="statVal">${user.badges?.length || 0}</div><div class="statLabel">Badges</div></div>
     </div>
     ${renderHeatmap(user.id)}
@@ -544,6 +553,7 @@ function renderProgress(user) {
   });
 
   const topicsDone = topics.filter(t => t.done === t.total && t.total > 0).length;
+  const totalTopics = TOPICS.length || 1;
   const nextTopic = topics.find(t => t.nextSub) || null;
 
   const recent = Object.entries(mods)
@@ -573,7 +583,7 @@ function renderProgress(user) {
           <div class="statLabel">Lessons done</div>
         </div>
         <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-          <div class="statVal">${topicsDone}/16</div>
+          <div class="statVal">${topicsDone}/${totalTopics}</div>
           <div class="statLabel">Topics completed</div>
         </div>
       </div>
@@ -854,6 +864,40 @@ function openLesson(topicId, subtopicId) {
 
 // ── Section 9: Lesson Renderer + Content ────────────────────────
 const LESSON_CONTENT = {
+  basics_1: `
+    <div class="concept">
+      <h3>What is Machine Learning?</h3>
+      <p><b>Analogy:</b> Instead of writing a rulebook for every situation, you show examples and let the system <i>learn the pattern</i>.</p>
+      <p><b>Machine Learning (ML)</b> is when a model learns a mapping from inputs (features) to outputs (predictions) using data.</p>
+    </div>
+    <div class="formula">Model: input → prediction<br><span class="sub">Training = adjust parameters to reduce error on examples</span></div>
+    <div class="interactive">
+      <b>Spot it:</b> Spam filtering, face unlock, product recommendations — all learn patterns from data.
+    </div>`,
+
+  basics_2: `
+    <div class="concept">
+      <h3>Data, Features, and Labels</h3>
+      <p><b>Analogy:</b> Features are the clues, labels are the answer key.</p>
+      <p><b>Features (X)</b> are the measurable inputs (e.g., house size, number of rooms). <b>Labels (y)</b> are what you want to predict (e.g., price).</p>
+      <p>Good features are informative, consistent, and available at prediction time.</p>
+    </div>
+    <div class="formula">Dataset = (X, y)<br><span class="sub">Rows = examples, columns = features</span></div>
+    <div class="interactive">
+      <b>Watch out:</b> <b>Data leakage</b> happens when a feature accidentally includes future/answer information (inflates accuracy, fails in real life).
+    </div>`,
+
+  basics_3: `
+    <div class="concept">
+      <h3>Train/Test Split and Overfitting</h3>
+      <p><b>Analogy:</b> Memorizing answers vs learning the subject. A student can ace a practice sheet (train) but fail a new sheet (test) if they memorized.</p>
+      <p>We evaluate on <b>unseen data</b> to measure generalization. If a model fits training data too closely, it can <b>overfit</b>.</p>
+    </div>
+    <div class="formula">Train → fit parameters<br>Test → estimate real-world performance</div>
+    <div class="interactive">
+      <b>Rule of thumb:</b> If training performance keeps improving but test performance stalls or drops, you’re likely overfitting.
+    </div>`,
+
   linreg_1: `
     <div class="concept">
       <h3>What is Regression?</h3>
@@ -1526,6 +1570,7 @@ function labShell({ title, subtitle, controlsHtml, vizHtml, notesHtml }) {
 }
 
 const LAB_NOTES = {
+  basics_4: `<div class="sub"><b>What to try:</b> Move the slider from “Simple” to “Too complex”. Watch how training error always improves, but test error eventually gets worse (overfitting).</div>`,
   linreg_4: `<div class="sub"><b>What to try:</b> seed points, then drag one point far away. Watch how the line and MSE change. Outliers matter.</div>`,
   logreg_4: `<div class="sub"><b>What to try:</b> flip the sign of w. Notice the sigmoid curve flips direction and the boundary shifts.</div>`,
   perceptron_4: `<div class="sub"><b>What to try:</b> keep inputs fixed and sweep the bias. You’re shifting the decision threshold.</div>`,
@@ -1546,6 +1591,129 @@ const LAB_NOTES = {
 
 const INTERACTIVE_LESSONS = {
   // Implementations are added/filled in below during the visualizer tasks.
+  basics_4: (mount) => {
+    const uid = `bas_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { c: 3 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Model complexity</div>
+        <div class="sub">Higher complexity fits training data better, but can overfit and generalize worse.</div>
+        <div class="labRow" style="margin-top:10px"><label>complexity</label><input id="${uid}_c" type="range" min="1" max="12" step="1" value="${st.c}"><span id="${uid}_vc" class="labMono">${st.c}</span></div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">What to notice</div>
+        <div class="sub">Training error ↓ monotonically. Test error ↓ then ↑.</div>
+      </div>
+    `;
+    mount.viz.innerHTML = `
+      <canvas id="${uid}_cv" class="labCanvas" width="720" height="420"></canvas>
+      <div class="sub" style="margin-top:10px">This is an intuition sketch (not a real dataset) for the <b>bias–variance tradeoff</b>.</div>
+    `;
+    const canvas = $(uid + "_cv");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+
+    const cEl = $(uid + "_c");
+    const vcEl = $(uid + "_vc");
+
+    function trainErr(c) { return clamp(0.05 + 0.95 * Math.exp(-c / 3.2), 0.05, 1); }
+    function testErr(c) {
+      // U-shaped: bias decreases, variance increases
+      const bias = 0.12 + 0.95 * Math.exp(-c / 3.4);
+      const varTerm = 0.02 + 0.006 * (c - 4) * (c - 4);
+      return clamp(bias + varTerm, 0.06, 1);
+    }
+
+    function drawCurve(fn, color) {
+      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
+      ctx.beginPath();
+      for (let i = 0; i <= 220; i++) {
+        const c = 1 + (11 * i) / 220;
+        const v = fn(c);
+        const px = x0 + ((c - 1) / 11) * pw;
+        const py = y0 - v * ph;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+    }
+
+    function drawMarker(c, v, color) {
+      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
+      const px = x0 + ((c - 1) / 11) * pw;
+      const py = y0 - v * ph;
+      ctx.beginPath(); ctx.arc(px, py, 6.5, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+
+      // axes box
+      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x0, y0 - ph, pw, ph);
+
+      // grid
+      ctx.strokeStyle = "rgba(255,255,255,.06)";
+      for (let i = 1; i <= 4; i++) {
+        const y = y0 - (i / 5) * ph;
+        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + pw, y); ctx.stroke();
+      }
+      for (let i = 1; i <= 5; i++) {
+        const x = x0 + (i / 6) * pw;
+        ctx.beginPath(); ctx.moveTo(x, y0 - ph); ctx.lineTo(x, y0); ctx.stroke();
+      }
+
+      // labels
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.font = "700 14px var(--sans)";
+      ctx.fillText("Error", x0, y0 - ph - 14);
+      ctx.font = "12px var(--sans)";
+      ctx.fillStyle = "rgba(255,255,255,.65)";
+      ctx.fillText("Complexity →", x0 + pw - 110, y0 + 34);
+
+      // curves
+      drawCurve(trainErr, "rgba(107,255,184,.85)");
+      drawCurve(testErr, "rgba(224,122,95,.9)");
+
+      // markers at current complexity
+      const tr = trainErr(st.c);
+      const te = testErr(st.c);
+      drawMarker(st.c, tr, "rgba(107,255,184,.9)");
+      drawMarker(st.c, te, "rgba(224,122,95,.95)");
+
+      // legend
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.font = "12px var(--sans)";
+      ctx.fillText("Training error", x0 + 12, y0 - ph + 22);
+      ctx.fillStyle = "rgba(107,255,184,.9)";
+      ctx.fillRect(x0 + 110, y0 - ph + 14, 20, 4);
+      ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.fillText("Test error", x0 + 12, y0 - ph + 44);
+      ctx.fillStyle = "rgba(224,122,95,.95)";
+      ctx.fillRect(x0 + 110, y0 - ph + 36, 20, 4);
+    }
+
+    cEl.addEventListener("input", () => {
+      st.c = parseInt(cEl.value, 10);
+      vcEl.textContent = String(st.c);
+      draw();
+    });
+    draw();
+  },
   linreg_4: (mount) => {
     const uid = `lr_${Math.random().toString(36).slice(2, 8)}`;
     mount.controls.innerHTML = `
@@ -4431,11 +4599,29 @@ function renderSimulate(user) {
     <h2>Learn Through Simulation</h2>
     <p class="sub">Interactive real-world scenarios. Watch metrics change as you make decisions.</p>
     <div class="gamesGrid" style="margin-top:12px">
+      <div class="gameCard" data-sim="credit" style="cursor:pointer">
+        <div style="font-size:36px;margin-bottom:8px">💳</div>
+        <h3>Credit Risk (Threshold Tuning)</h3>
+        <div class="sub">Choose an approval threshold. Trade off profit vs default risk. See outcomes change live.</div>
+        <div class="sub" style="margin-top:8px">Best profit: ${((user.prog.sims?.credit?.bestProfit ?? 0) | 0).toLocaleString()}</div>
+      </div>
       <div class="gameCard" data-sim="spam" style="cursor:pointer">
         <div style="font-size:36px;margin-bottom:8px">🚨</div>
         <h3>Spam Detector</h3>
         <div class="sub">Label emails. Watch precision & recall update live. Build an ML intuition for classification metrics.</div>
         <div class="sub" style="margin-top:8px">Accuracy: ${(user.prog.sims?.spam?.acc||0)*100|0}%</div>
+      </div>
+      <div class="gameCard" data-sim="inventory" style="cursor:pointer">
+        <div style="font-size:36px;margin-bottom:8px">📦</div>
+        <h3>Inventory Planning (Newsvendor)</h3>
+        <div class="sub">Pick how much to stock before demand arrives. Balance stockouts vs waste across many days.</div>
+        <div class="sub" style="margin-top:8px">Best avg profit/day: ${((user.prog.sims?.inventory?.bestAvg ?? 0) | 0).toLocaleString()}</div>
+      </div>
+      <div class="gameCard" data-sim="surge" style="cursor:pointer">
+        <div style="font-size:36px;margin-bottom:8px">🚕</div>
+        <h3>Ride Pricing (Surge)</h3>
+        <div class="sub">Set a surge multiplier. Higher price boosts supply but can reduce demand and trust.</div>
+        <div class="sub" style="margin-top:8px">Best revenue/min: ${((user.prog.sims?.surge?.bestRev ?? 0) | 0).toLocaleString()}</div>
       </div>
     </div>
   `;
@@ -4443,19 +4629,25 @@ function renderSimulate(user) {
     card.addEventListener("click", () => {
       const sim = card.dataset.sim;
       if (sim === "spam") startSpamSim(user);
+      if (sim === "credit") startCreditRiskSim(user);
+      if (sim === "inventory") startInventorySim(user);
+      if (sim === "surge") startSurgePricingSim(user);
     });
   });
 }
 
-function startSpamSim(user) {
+function startSimShell() {
   curView = "simulation";
   document.querySelectorAll(".view").forEach(v => hide(v));
   show($("v_simulation"));
   document.querySelectorAll(".navBtn").forEach(b => {
     b.classList.toggle("active", b.dataset.r === "simulate");
   });
-  
-  const root = $("v_simulation");
+  return $("v_simulation");
+}
+
+function startSpamSim(user) {
+  const root = startSimShell();
   const spamExamples = [
     { text: "Congratulations! You won a FREE prize. Click now!", label: "spam", keywords: ["FREE", "won", "click now"] },
     { text: "Your account has been compromised. Verify immediately.", label: "spam", keywords: ["compromised", "verify"] },
@@ -4580,6 +4772,371 @@ function startSpamSim(user) {
   }
 
   renderEmail();
+}
+
+function startCreditRiskSim(user) {
+  const root = startSimShell();
+
+  // Simple "score -> default probability" portfolio. Choose threshold to maximize profit.
+  const N = 120;
+  const rng = () => Math.random();
+  const applicants = Array.from({ length: N }, () => {
+    const score = 300 + Math.floor(rng() * 551); // 300..850
+    // Default probability decreases with score; add noise.
+    const base = 1 / (1 + Math.exp((score - 630) / 55)); // ~sigmoid
+    const pDefault = clamp(base + (rng() - 0.5) * 0.08, 0.01, 0.75);
+    // Profit model: if repay -> earn interest; if default -> lose principal.
+    const principal = 5000 + Math.floor(rng() * 15001); // 5k..20k
+    const apr = 0.12 + (rng() * 0.16); // 12%..28%
+    return { score, pDefault, principal, apr };
+  });
+
+  const fmt$ = (n) => (n >= 0 ? "+" : "−") + "$" + Math.abs(Math.round(n)).toLocaleString();
+
+  function evaluate(threshold) {
+    let approved = 0, defaults = 0, repaid = 0;
+    let profit = 0;
+    applicants.forEach(a => {
+      if (a.score < threshold) return;
+      approved++;
+      const willDefault = rng() < a.pDefault;
+      if (willDefault) {
+        defaults++;
+        profit -= a.principal; // principal loss
+      } else {
+        repaid++;
+        profit += a.principal * a.apr; // interest income
+      }
+    });
+    const defaultRate = approved ? defaults / approved : 0;
+    return { approved, defaults, repaid, defaultRate, profit };
+  }
+
+  let threshold = 650;
+  let best = { threshold, profit: -Infinity };
+
+  function render() {
+    const r = evaluate(threshold);
+    if (r.profit > best.profit) best = { threshold, profit: r.profit };
+
+    root.innerHTML = `
+      <button class="btn sm ghost" onclick="goView('simulate')" style="margin-bottom:10px">← Back</button>
+      <h2 style="margin:0 0 4px">Credit Risk</h2>
+      <p class="sub" style="margin:0 0 14px">Set an approval threshold (credit score). Higher thresholds reduce defaults but also reduce revenue.</p>
+      <div class="g2" style="gap:12px">
+        <div class="panel">
+          <div class="panelTitle">Decision</div>
+          <div class="labCard" style="margin-top:10px">
+            <div class="labRow"><label>Threshold</label><span class="labMono" id="crTVal">${threshold}</span></div>
+            <input id="crT" type="range" min="300" max="850" step="5" value="${threshold}" />
+            <div class="sub" style="margin-top:8px">
+              Approve applicants with score ≥ <b>${threshold}</b>.
+            </div>
+          </div>
+          <div class="sub" style="margin-top:12px;padding:10px;background:var(--canvas);border-radius:12px;box-shadow:var(--neo-sm-in)">
+            <b>Business model (toy):</b> If they repay → earn interest. If they default → lose principal.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn primary sm" id="crRun" type="button">Run simulation</button>
+            <button class="btn sm" id="crBest" type="button">Use best so far</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panelTitle">Outcomes (one run)</div>
+          <div class="vizMetric" style="margin-top:10px"><span class="label">Approved</span><span class="val" id="crApproved">—</span></div>
+          <div class="vizMetric"><span class="label">Defaults</span><span class="val" id="crDefaults">—</span></div>
+          <div class="vizMetric"><span class="label">Default%</span><span class="val" id="crDR">—</span></div>
+          <div class="vizMetric"><span class="label">Profit</span><span class="val" id="crProfit">—</span></div>
+          <div class="labCard" style="margin-top:12px">
+            <div class="sub"><b>Best so far:</b> threshold <b id="crBestT">${best.threshold}</b> • profit <b id="crBestP">${fmt$(best.profit)}</b></div>
+          </div>
+          <div class="sub" style="margin-top:12px">
+            Try sweeping the threshold: low thresholds approve more (more profit potential, more defaults), high thresholds are safer (but fewer approvals).
+          </div>
+        </div>
+      </div>
+    `;
+
+    const runOnce = () => {
+      const rr = evaluate(threshold);
+      $("crApproved").textContent = rr.approved;
+      $("crDefaults").textContent = rr.defaults;
+      $("crDR").textContent = (rr.defaultRate * 100).toFixed(1) + "%";
+      $("crProfit").textContent = fmt$(rr.profit);
+
+      // Persist best profit; award points for improvement.
+      const prevBest = user.prog?.sims?.credit?.bestProfit ?? -Infinity;
+      if (best.profit > prevBest) {
+        let u = me();
+        if (u) {
+          u.prog = { ...u.prog, sims: { ...u.prog.sims, credit: { bestProfit: best.profit, bestThreshold: best.threshold } } };
+          save(u);
+          addPts(u, 15, "simulation_credit_best");
+          updateChip();
+        }
+      } else {
+        let u = me();
+        if (u) addPts(u, 5, "simulation_credit_run");
+      }
+
+      $("crBestT").textContent = best.threshold;
+      $("crBestP").textContent = fmt$(best.profit);
+    };
+
+    $("crT").addEventListener("input", (e) => {
+      threshold = parseInt(e.target.value, 10);
+      $("crTVal").textContent = threshold;
+    });
+    $("crRun").addEventListener("click", runOnce);
+    $("crBest").addEventListener("click", () => {
+      threshold = best.threshold;
+      $("crT").value = threshold;
+      $("crTVal").textContent = threshold;
+      runOnce();
+    });
+
+    runOnce();
+  }
+
+  render();
+}
+
+function startInventorySim(user) {
+  const root = startSimShell();
+
+  // Newsvendor-like simulation: choose stock Q; daily demand ~ normal-ish.
+  let Q = 60;
+  const price = 12;
+  const cost = 6;
+  const salvage = 2;
+  const days = 60;
+
+  function sampleDemand() {
+    // approx normal via sum of uniforms
+    const u = (Math.random() + Math.random() + Math.random() + Math.random()) / 4; // ~0..1
+    return Math.max(0, Math.round(20 + u * 120)); // 20..140
+  }
+
+  function run(Qty) {
+    let revenue = 0, purchase = Qty * cost, salvageBack = 0;
+    let stockouts = 0, waste = 0;
+    const daily = [];
+    for (let d = 0; d < days; d++) {
+      const demand = sampleDemand();
+      const sold = Math.min(Qty, demand);
+      const leftover = Math.max(0, Qty - sold);
+      const missed = Math.max(0, demand - sold);
+      revenue += sold * price;
+      salvageBack += leftover * salvage;
+      stockouts += missed;
+      waste += leftover;
+      daily.push({ demand, sold, leftover, missed });
+    }
+    const profit = revenue + salvageBack - purchase;
+    const avg = profit / days;
+    return { profit, avg, revenue, salvageBack, purchase, stockouts, waste, daily };
+  }
+
+  let bestAvg = -Infinity;
+  let bestQ = Q;
+
+  function render() {
+    const res = run(Q);
+    if (res.avg > bestAvg) { bestAvg = res.avg; bestQ = Q; }
+
+    const last = res.daily.slice(-12);
+    const maxD = Math.max(1, ...last.map(x => x.demand));
+    const bars = last.map(x => {
+      const soldW = Math.round((x.sold / maxD) * 100);
+      const demandW = Math.round((x.demand / maxD) * 100);
+      return `
+        <div class="sub" style="display:grid;grid-template-columns:72px 1fr 60px;gap:10px;align-items:center">
+          <span class="labMono">D=${x.demand}</span>
+          <div style="height:12px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in);position:relative">
+            <div style="position:absolute;left:0;top:0;bottom:0;width:${demandW}%;background:rgba(107,158,158,.15)"></div>
+            <div style="position:absolute;left:0;top:0;bottom:0;width:${soldW}%;background:linear-gradient(90deg,var(--coral),var(--teal))"></div>
+          </div>
+          <span class="labMono" style="text-align:right">${x.leftover ? `+${x.leftover} left` : (x.missed ? `-${x.missed} miss` : "ok")}</span>
+        </div>`;
+    }).join("");
+
+    root.innerHTML = `
+      <button class="btn sm ghost" onclick="goView('simulate')" style="margin-bottom:10px">← Back</button>
+      <h2 style="margin:0 0 4px">Inventory Planning</h2>
+      <p class="sub" style="margin:0 0 14px">Choose stock \(Q\) before demand arrives. Profit = sales − cost + salvage for leftovers.</p>
+      <div class="g2" style="gap:12px">
+        <div class="panel">
+          <div class="panelTitle">Controls</div>
+          <div class="labCard" style="margin-top:10px">
+            <div class="labRow"><label>Stock (Q)</label><span class="labMono" id="invQVal">${Q}</span></div>
+            <input id="invQ" type="range" min="0" max="180" step="1" value="${Q}" />
+            <div class="sub" style="margin-top:8px">
+              Price=$${price}, Cost=$${cost}, Salvage=$${salvage}, Days=${days}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn primary sm" id="invRun" type="button">Run new season</button>
+            <button class="btn sm" id="invBest" type="button">Use best so far</button>
+          </div>
+          <div class="labCard" style="margin-top:12px">
+            <div class="sub"><b>Best so far:</b> Q=<b id="invBestQ">${bestQ}</b> • avg profit/day <b id="invBestAvg">${Math.round(bestAvg)}</b></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panelTitle">Results</div>
+          <div class="vizMetric" style="margin-top:10px"><span class="label">Avg/day</span><span class="val" id="invAvg">${Math.round(res.avg)}</span></div>
+          <div class="vizMetric"><span class="label">Profit</span><span class="val" id="invProfit">${Math.round(res.profit).toLocaleString()}</span></div>
+          <div class="vizMetric"><span class="label">Stockouts</span><span class="val" id="invSO">${res.stockouts}</span></div>
+          <div class="vizMetric"><span class="label">Waste</span><span class="val" id="invWaste">${res.waste}</span></div>
+          <div class="sub" style="margin-top:12px"><b>Last 12 days</b> (teal=Demand, gradient=Sold)</div>
+          <div style="display:grid;gap:8px;margin-top:8px">${bars}</div>
+        </div>
+      </div>
+    `;
+
+    const persistIfBest = () => {
+      const prev = user.prog?.sims?.inventory?.bestAvg ?? -Infinity;
+      if (bestAvg > prev) {
+        let u = me();
+        if (u) {
+          u.prog = { ...u.prog, sims: { ...u.prog.sims, inventory: { bestAvg, bestQ } } };
+          save(u);
+          addPts(u, 15, "simulation_inventory_best");
+          updateChip();
+        }
+      } else {
+        let u = me();
+        if (u) addPts(u, 5, "simulation_inventory_run");
+      }
+    };
+
+    $("invQ").addEventListener("input", (e) => { Q = parseInt(e.target.value, 10); $("invQVal").textContent = Q; });
+    $("invRun").addEventListener("click", () => { render(); persistIfBest(); });
+    $("invBest").addEventListener("click", () => { Q = bestQ; $("invQ").value = Q; $("invQVal").textContent = Q; render(); persistIfBest(); });
+    $("invBestQ").textContent = bestQ;
+    $("invBestAvg").textContent = Math.round(bestAvg);
+  }
+
+  render();
+}
+
+function startSurgePricingSim(user) {
+  const root = startSimShell();
+
+  let surge = 1.2;
+  let baseDemand = 120; // riders/min at price=1x
+  let baseSupply = 85;  // drivers/min at 1x
+  let trust = 0.85;     // 0..1 affects future demand
+
+  const fare = 8;       // $ per ride
+  const driverShare = 0.75;
+
+  let bestRev = -Infinity;
+  let bestSurge = surge;
+
+  function stepOnce(mult) {
+    // Demand decreases with price and low trust.
+    const priceFactor = 1 / (1 + 1.6 * (mult - 1));
+    const demand = Math.max(0, Math.round(baseDemand * priceFactor * (0.65 + 0.7 * trust)));
+
+    // Supply increases with surge.
+    const supply = Math.max(0, Math.round(baseSupply * (0.85 + 0.65 * (mult - 1) + 0.4 * mult)));
+
+    const served = Math.min(demand, supply);
+    const unserved = Math.max(0, demand - served);
+    const idle = Math.max(0, supply - served);
+
+    const price = fare * mult;
+    const gross = served * price;
+    const platform = gross * (1 - driverShare);
+
+    // Update trust: too much surge or too many unserved riders hurts.
+    const surgePenalty = Math.max(0, mult - 1.4) * 0.08;
+    const waitPenalty = demand ? (unserved / demand) * 0.10 : 0;
+    const trustGain = idle > 0 ? 0.01 : 0; // if supply exceeds demand, riders feel it’s reliable
+    trust = clamp(trust + trustGain - surgePenalty - waitPenalty, 0.25, 0.98);
+
+    // Drift base demand/supply to simulate time variability.
+    baseDemand = clamp(baseDemand + (Math.random() - 0.5) * 10, 60, 180);
+    baseSupply = clamp(baseSupply + (Math.random() - 0.5) * 8, 40, 140);
+
+    return { demand, supply, served, unserved, idle, price, gross, platform, trust };
+  }
+
+  function render(run = false) {
+    const r = run ? stepOnce(surge) : null;
+    if (r && r.platform > bestRev) { bestRev = r.platform; bestSurge = surge; }
+
+    root.innerHTML = `
+      <button class="btn sm ghost" onclick="goView('simulate')" style="margin-bottom:10px">← Back</button>
+      <h2 style="margin:0 0 4px">Ride Pricing (Surge)</h2>
+      <p class="sub" style="margin:0 0 14px">Pick a surge multiplier. Higher prices can attract drivers but may reduce rider demand and trust.</p>
+      <div class="g2" style="gap:12px">
+        <div class="panel">
+          <div class="panelTitle">Controls</div>
+          <div class="labCard" style="margin-top:10px">
+            <div class="labRow"><label>Surge</label><span class="labMono" id="sgVal">${surge.toFixed(2)}×</span></div>
+            <input id="sg" type="range" min="1" max="2.5" step="0.05" value="${surge}" />
+            <div class="sub" style="margin-top:8px">Fare=$${fare} • Platform share=${Math.round((1 - driverShare) * 100)}%</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn primary sm" id="sgStep" type="button">Step 1 minute</button>
+            <button class="btn sm" id="sgBest" type="button">Use best so far</button>
+            <button class="btn ghost sm" id="sgReset" type="button">Reset market</button>
+          </div>
+          <div class="labCard" style="margin-top:12px">
+            <div class="sub"><b>Best so far:</b> ${bestSurge.toFixed(2)}× • platform revenue/min <b>$${Math.round(bestRev).toLocaleString()}</b></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panelTitle">Market (latest minute)</div>
+          ${r ? `
+            <div class="vizMetric" style="margin-top:10px"><span class="label">Demand</span><span class="val">${r.demand}/min</span></div>
+            <div class="vizMetric"><span class="label">Supply</span><span class="val">${r.supply}/min</span></div>
+            <div class="vizMetric"><span class="label">Served</span><span class="val">${r.served}/min</span></div>
+            <div class="vizMetric"><span class="label">Unserved</span><span class="val">${r.unserved}/min</span></div>
+            <div class="vizMetric"><span class="label">Price</span><span class="val">$${r.price.toFixed(2)}</span></div>
+            <div class="vizMetric"><span class="label">Platform</span><span class="val">$${Math.round(r.platform).toLocaleString()}</span></div>
+            <div class="vizMetric"><span class="label">Trust</span><span class="val">${Math.round(r.trust * 100)}%</span></div>
+            <div class="pbar" style="margin-top:12px"><div style="width:${Math.round(r.trust * 100)}%"></div></div>
+          ` : `<div class="sub" style="margin-top:10px">Click <b>Step 1 minute</b> to simulate.</div>`}
+          <div class="sub" style="margin-top:12px;padding:10px;background:var(--canvas);border-radius:12px;box-shadow:var(--neo-sm-in)">
+            <b>What to notice:</b> If surge is too high, trust falls → future demand drops. If surge is too low, supply lags → many unserved riders.
+          </div>
+        </div>
+      </div>
+    `;
+
+    $("sg").addEventListener("input", (e) => { surge = parseFloat(e.target.value); $("sgVal").textContent = surge.toFixed(2) + "×"; });
+    $("sgStep").addEventListener("click", () => {
+      render(true);
+      const prev = user.prog?.sims?.surge?.bestRev ?? -Infinity;
+      if (bestRev > prev) {
+        let u = me();
+        if (u) {
+          u.prog = { ...u.prog, sims: { ...u.prog.sims, surge: { bestRev, bestSurge } } };
+          save(u);
+          addPts(u, 10, "simulation_surge_best");
+          updateChip();
+        }
+      } else {
+        let u = me();
+        if (u) addPts(u, 3, "simulation_surge_step");
+      }
+    });
+    $("sgBest").addEventListener("click", () => { surge = bestSurge; $("sg").value = surge; $("sgVal").textContent = surge.toFixed(2) + "×"; render(true); });
+    $("sgReset").addEventListener("click", () => {
+      surge = 1.2;
+      baseDemand = 120;
+      baseSupply = 85;
+      trust = 0.85;
+      $("sg").value = surge;
+      $("sgVal").textContent = surge.toFixed(2) + "×";
+      render(false);
+    });
+  }
+
+  render(false);
 }
 
 // ── Section 14: Leaderboard ─────────────────────────────────────
