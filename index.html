@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIML Quest — Interactive Visual Learning</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="logo"><canvas id="logoCanvas" width="36" height="36"></canvas></div>
+          <div>
+            <div class="brandName">AIML Quest</div>
+            <div class="brandTag">See it. Touch it. Learn it.</div>
+          </div>
+        </div>
+        <div class="topActions">
+          <span id="userChip" class="chip hidden"></span>
+          <button id="btnDemo" class="btn ghost" type="button">Demo</button>
+          <button id="btnLogout" class="btn ghost hidden" type="button">Logout</button>
+        </div>
+      </header>
+
+      <!-- AUTH -->
+      <section id="authView" class="authWrap">
+        <div class="authCard glass">
+          <h1>Welcome to AIML Quest</h1>
+          <p class="sub">Learn AI/ML visually — watch neurons fire, drag weights, grow decision trees.</p>
+          <div class="tabRow">
+            <button id="tabLogin" class="tabBtn active" type="button">Login</button>
+            <button id="tabReg" class="tabBtn" type="button">Register</button>
+          </div>
+          <form id="authForm">
+            <label><span>Email</span><input id="inEmail" type="email" required placeholder="you@example.com" autocomplete="email" /></label>
+            <label><span>Password</span><input id="inPw" type="password" required placeholder="••••••••" autocomplete="current-password" /></label>
+            <button id="authBtn" class="btn primary" type="submit">Login</button>
+            <div id="authErr" class="errBox hidden"></div>
+          </form>
+        </div>
+      </section>
+
+      <!-- APP -->
+      <section id="appView" class="appWrap hidden">
+        <aside class="sidebar glass">
+          <nav id="mainNav" class="navList">
+            <button class="navBtn active" data-r="topics" type="button">Topics</button>
+            <button class="navBtn" data-r="quiz" type="button">Quiz</button>
+            <button class="navBtn" data-r="playground" type="button">Playground</button>
+            <button class="navBtn" data-r="simulate" type="button">Simulation</button>
+            <button class="navBtn" data-r="progress" type="button">Progress</button>
+            <button class="navBtn" data-r="leaderboard" type="button">Leaderboard</button>
+          </nav>
+          <div class="sideInfo glass">
+            <div class="sideInfoTitle">How to learn here</div>
+            <div class="sub">Pick a topic. Drag sliders. Hover components. Watch the math happen live.</div>
+          </div>
+        </aside>
+        <main class="content glass">
+          <div id="v_topics" class="view"></div>
+          <div id="v_perceptron" class="view hidden"></div>
+          <div id="v_nn" class="view hidden"></div>
+          <div id="v_dtree" class="view hidden"></div>
+          <div id="v_knn" class="view hidden"></div>
+          <div id="v_linreg" class="view hidden"></div>
+          <div id="v_quiz" class="view hidden"></div>
+          <div id="v_playground" class="view hidden"></div>
+          <div id="v_simulate" class="view hidden"></div>
+          <div id="v_progress" class="view hidden"></div>
+          <div id="v_leaderboard" class="view hidden"></div>
+        </main>
+      </section>
+
+      <!-- TOOLTIP (global, positioned absolutely) -->
+      <div id="tooltip" class="tooltip hidden"></div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
