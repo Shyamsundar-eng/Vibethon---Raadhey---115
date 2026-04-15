@@ -82,7 +82,8 @@ async function chatWithTutor(message) { chatHistory.push({ role: "user", text: m
 
 // ── Section 3: User Model ───────────────────────────────────────
 function freshUser(email) {
-  return { id:`u_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`, email, pw:"", createdAt:nowISO(), pts:0, badges:[], streak:{n:0,d:""}, prog:{mods:{},quiz:{},runs:0,sims:0,games:{}}, onboarded:false, level:"beginner", goal:"" };
+  const baseName = String(email || "").split("@")[0] || "Learner";
+  return { id:`u_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`, email, name: baseName, pw:"", createdAt:nowISO(), pts:0, badges:[], streak:{n:0,d:""}, prog:{mods:{},quiz:{},runs:0,sims:0,games:{}}, onboarded:false, level:"beginner", goal:"" };
 }
 const loadUsers = () => rLS(LS_USERS, []);
 const saveUsers = (u) => wLS(LS_USERS, u);
@@ -658,11 +659,16 @@ function renderProfile(user) {
     <div class="g2" style="gap:12px">
       <div class="panel">
         <div class="panelTitle">Account</div>
+        <div class="sub" style="margin-top:10px"><b>Name:</b> ${esc(user.name || user.email.split("@")[0] || "Learner")}</div>
         <div class="sub" style="margin-top:10px"><b>Email:</b> ${esc(user.email)}</div>
         <div class="sub" style="margin-top:6px"><b>Joined:</b> ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
         <div class="sub" style="margin-top:12px"><b>Badges:</b> ${user.badges?.length ? user.badges.map(b => `<span class="pill" style="margin-right:6px">${esc(b)}</span>`).join("") : "—"}</div>
 
         <div style="margin-top:14px;display:grid;gap:10px">
+          <label style="display:grid;gap:6px">
+            <span class="sub" style="font-weight:600">Display name</span>
+            <input id="profName" type="text" maxlength="40" placeholder="Your name" />
+          </label>
           <label style="display:grid;gap:6px">
             <span class="sub" style="font-weight:600">Level</span>
             <select id="profLevel">
@@ -712,8 +718,10 @@ function renderProfile(user) {
 
   const levelEl = $("profLevel");
   const goalEl = $("profGoal");
+  const nameEl = $("profName");
   if (levelEl) levelEl.value = user.level || "beginner";
   if (goalEl) goalEl.value = user.goal || "";
+  if (nameEl) nameEl.value = user.name || (user.email?.split("@")[0] || "");
 
   const msg = $("profMsg");
   const showMsg = (t) => { if (!msg) return; msg.textContent = t; msg.classList.remove("hidden"); setTimeout(() => msg.classList.add("hidden"), 1800); };
@@ -721,7 +729,9 @@ function renderProfile(user) {
   $("profSave")?.addEventListener("click", () => {
     let u = me();
     if (!u) return;
-    u = { ...u, level: levelEl?.value || u.level, goal: goalEl?.value || u.goal };
+    const nextNameRaw = (nameEl?.value || "").trim();
+    const nextName = nextNameRaw || (u.email?.split("@")[0] || "Learner");
+    u = { ...u, name: nextName, level: levelEl?.value || u.level, goal: goalEl?.value || u.goal };
     save(u);
     updateChip();
     showMsg("Saved.");
@@ -4628,7 +4638,8 @@ let authMode = "login";
 function updateChip() {
   const u = me(), c = $("userChip");
   if (!u) { hide(c); return; }
-  c.textContent = `${u.email} · ${u.pts||0} pts · streak ${u.streak?.n||0}`;
+  const label = u.name || (u.email?.split("@")[0] || u.email);
+  c.textContent = `${label} · ${u.pts||0} pts · streak ${u.streak?.n||0}`;
   show(c);
 }
 
