@@ -393,6 +393,56 @@ canvas { display: block; }
 .tbl td { font-size: 13px; }
 .tbl tr:hover td { background: rgba(224,122,95,.04); }
 
+/* ── Leaderboard bar chart ───────────────────────────────────── */
+.lbTitle{
+  font-family: var(--head);
+  font-size: 13px;
+  font-weight: 800;
+  margin: 0 0 10px;
+}
+.lbChart{ display:grid; gap:10px; }
+.lbRow{
+  display:grid;
+  grid-template-columns: 44px minmax(140px, 1fr) 1.2fr 70px;
+  align-items:center;
+  gap:10px;
+}
+.lbRank{
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--sub);
+}
+.lbName{
+  font-size: 13px;
+  font-weight: 700;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.lbBarWrap{
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.06);
+  box-shadow: var(--neo-sm-in);
+  overflow:hidden;
+}
+.lbBar{
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--coral), var(--teal));
+}
+.lbVal{
+  text-align:right;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+@media (max-width: 720px){
+  .lbRow{ grid-template-columns: 38px minmax(110px, 1fr) 1fr 56px; }
+  .lbBarWrap{ height: 10px; }
+}
+
 /* ── STEP INDICATOR ────────────────────────────────────────── */
 .steps { display: flex; gap: 6px; margin-bottom: 12px; }
 .stepDot {

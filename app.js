@@ -2948,8 +2948,29 @@ function startSpamSim(user) {
 function renderLeaderboard() {
   const root = $("v_leaderboard");
   const users = loadUsers().slice().sort((a, b) => (b.pts || 0) - (a.pts || 0)).slice(0, 20);
+  const top = users.slice(0, 10);
+  const maxPts = Math.max(1, ...top.map(u => u.pts || 0));
   root.innerHTML = `
     <h2>Leaderboard</h2>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="lbTitle">Top rankings (points)</div>
+      <div class="lbChart" role="img" aria-label="Bar chart of top users by points">
+        ${top.map((u, i) => {
+          const pts = u.pts || 0;
+          const w = Math.round((pts / maxPts) * 100);
+          return `
+            <div class="lbRow">
+              <div class="lbRank">#${i + 1}</div>
+              <div class="lbName" title="${esc(u.email)}">${esc(u.email)}</div>
+              <div class="lbBarWrap">
+                <div class="lbBar" style="width:${w}%"></div>
+              </div>
+              <div class="lbVal">${pts}</div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
     <div class="panel">
       <table class="tbl">
         <thead><tr><th>#</th><th>User</th><th style="text-align:right">Points</th><th style="text-align:right">Streak</th><th style="text-align:right">Badges</th></tr></thead>
