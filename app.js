@@ -352,6 +352,7 @@ function renderView(name) {
     simulate: renderSimulate,
     simulation: () => {},
     leaderboard: renderLeaderboard,
+    profile: renderProfile,
   };
   if (map[name]) map[name](u);
 }
@@ -638,6 +639,98 @@ function renderProgress(user) {
       // if "Open" button inside recent list, still open topic (simple + consistent)
       openTopic(tid);
     });
+  });
+}
+
+function renderProfile(user) {
+  const root = $("v_profile");
+  const mods = user.prog?.mods || {};
+  const totalLessons = TOPICS.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
+  const lessonsDone = Object.keys(mods).length;
+  const lessonPct = totalLessons ? Math.round((lessonsDone / totalLessons) * 100) : 0;
+  const totalTopics = TOPICS.length || 1;
+  const topicsDone = TOPICS.filter(t => t.subtopics.every(s => mods[s.id])).length;
+
+  root.innerHTML = `
+    <h2 style="margin:0 0 4px">Profile</h2>
+    <p class="sub" style="margin:0 0 16px">Your account and learning stats.</p>
+
+    <div class="g2" style="gap:12px">
+      <div class="panel">
+        <div class="panelTitle">Account</div>
+        <div class="sub" style="margin-top:10px"><b>Email:</b> ${esc(user.email)}</div>
+        <div class="sub" style="margin-top:6px"><b>Joined:</b> ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
+        <div class="sub" style="margin-top:12px"><b>Badges:</b> ${user.badges?.length ? user.badges.map(b => `<span class="pill" style="margin-right:6px">${esc(b)}</span>`).join("") : "—"}</div>
+
+        <div style="margin-top:14px;display:grid;gap:10px">
+          <label style="display:grid;gap:6px">
+            <span class="sub" style="font-weight:600">Level</span>
+            <select id="profLevel">
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </label>
+          <label style="display:grid;gap:6px">
+            <span class="sub" style="font-weight:600">Goal</span>
+            <select id="profGoal">
+              <option value="">—</option>
+              <option value="understand">Understand</option>
+              <option value="build">Build</option>
+              <option value="career">Career</option>
+            </select>
+          </label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="profSave" class="btn primary sm" type="button">Save</button>
+            <button id="profLogout" class="btn sm ghost" type="button">Logout</button>
+          </div>
+          <div id="profMsg" class="sub hidden" style="padding:10px;border-radius:10px;background:rgba(107,158,158,.12)"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panelTitle">Learning</div>
+        <div class="g3" style="margin-top:10px">
+          <div class="statCard" style="box-shadow:none;background:var(--canvas)">
+            <div class="statVal">${user.pts || 0}</div>
+            <div class="statLabel">Points</div>
+          </div>
+          <div class="statCard" style="box-shadow:none;background:var(--canvas)">
+            <div class="statVal">${user.streak?.n || 0}</div>
+            <div class="statLabel">Streak</div>
+          </div>
+          <div class="statCard" style="box-shadow:none;background:var(--canvas)">
+            <div class="statVal">${lessonsDone}/${totalLessons}</div>
+            <div class="statLabel">Lessons done</div>
+          </div>
+        </div>
+        <div class="sub" style="margin-top:10px">${topicsDone} of ${totalTopics} topics completed</div>
+        <div class="pbar" style="margin-top:10px"><div style="width:${lessonPct}%"></div></div>
+      </div>
+    </div>
+  `;
+
+  const levelEl = $("profLevel");
+  const goalEl = $("profGoal");
+  if (levelEl) levelEl.value = user.level || "beginner";
+  if (goalEl) goalEl.value = user.goal || "";
+
+  const msg = $("profMsg");
+  const showMsg = (t) => { if (!msg) return; msg.textContent = t; msg.classList.remove("hidden"); setTimeout(() => msg.classList.add("hidden"), 1800); };
+
+  $("profSave")?.addEventListener("click", () => {
+    let u = me();
+    if (!u) return;
+    u = { ...u, level: levelEl?.value || u.level, goal: goalEl?.value || u.goal };
+    save(u);
+    updateChip();
+    showMsg("Saved.");
+  });
+
+  $("profLogout")?.addEventListener("click", () => {
+    fbAuth.signOut();
+    clearSess();
+    showAuth();
   });
 }
 
@@ -4485,34 +4578,46 @@ function renderLeaderboard() {
   const users = loadUsers().slice().sort((a, b) => (b.pts || 0) - (a.pts || 0)).slice(0, 20);
   const top = users.slice(0, 10);
   const maxPts = Math.max(1, ...top.map(u => u.pts || 0));
+  const meUser = me();
+  const myId = meUser?.id || "";
   root.innerHTML = `
     <h2>Leaderboard</h2>
     <div class="panel" style="margin-bottom:14px">
-      <div class="lbTitle">Top rankings (points)</div>
-      <div class="lbChart" role="img" aria-label="Bar chart of top users by points">
-        ${top.map((u, i) => {
+      <div class="lbHeader">
+        <div>
+          <div class="lbTitle">Top rankings</div>
+          <div class="sub">Sorted by points • showing top ${users.length}</div>
+        </div>
+      </div>
+      <div class="lbList" role="list">
+        ${users.map((u, i) => {
           const pts = u.pts || 0;
-          const w = Math.round((pts / maxPts) * 100);
+          const w = Math.round((pts / Math.max(1, users[0]?.pts || 1)) * 100);
+          const initials = (u.email || "U").split("@")[0].slice(0, 2).toUpperCase();
+          const isMe = myId && u.id === myId;
           return `
-            <div class="lbRow">
-              <div class="lbRank">#${i + 1}</div>
-              <div class="lbName" title="${esc(u.email)}">${esc(u.email)}</div>
-              <div class="lbBarWrap">
-                <div class="lbBar" style="width:${w}%"></div>
+            <div class="lbCard ${isMe ? "me" : ""}" role="listitem">
+              <div class="lbLeft">
+                <div class="lbAvatar" aria-hidden="true">${esc(initials)}</div>
+                <div class="lbMeta">
+                  <div class="lbNameRow">
+                    <div class="lbName" title="${esc(u.email)}">${esc(u.email)}</div>
+                    ${i < 3 ? `<span class="lbCrown" title="Top ${i + 1}">${i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>` : ""}
+                  </div>
+                  <div class="sub">streak <b>${u.streak?.n || 0}</b> • badges <b>${u.badges?.length || 0}</b></div>
+                  <div class="lbBarWrap" aria-hidden="true">
+                    <div class="lbBar" style="width:${w}%"></div>
+                  </div>
+                </div>
               </div>
-              <div class="lbVal">${pts}</div>
+              <div class="lbRight">
+                <div class="lbRankPill">#${i + 1}</div>
+                <div class="lbVal"><b>${pts}</b><div class="sub" style="margin-top:2px">pts</div></div>
+              </div>
             </div>
           `;
         }).join("")}
       </div>
-    </div>
-    <div class="panel">
-      <table class="tbl">
-        <thead><tr><th>#</th><th>User</th><th style="text-align:right">Points</th><th style="text-align:right">Streak</th><th style="text-align:right">Badges</th></tr></thead>
-        <tbody>
-          ${users.map((u, i) => `<tr><td>${i+1}</td><td>${esc(u.email)}</td><td style="text-align:right"><b>${u.pts||0}</b></td><td style="text-align:right">${u.streak?.n||0}</td><td style="text-align:right">${u.badges?.length||0}</td></tr>`).join("")}
-        </tbody>
-      </table>
     </div>
   `;
 }
@@ -4607,6 +4712,10 @@ function boot() {
     clearSess();
     showAuth();
   });
+
+  // Make the top user chip open Profile quickly
+  $("userChip").addEventListener("click", () => goView("profile"));
+  $("userChip").style.cursor = "pointer";
 
   $("btnDemo").addEventListener("click", async () => {
     const users = loadUsers();
