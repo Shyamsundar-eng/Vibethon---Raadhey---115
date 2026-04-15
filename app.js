@@ -74,8 +74,144 @@ async function _rawGeminiCall(prompt, maxTokens) {
 }
 async function askGemini(prompt, maxTokens = 1024) { return _enqueue(() => _rawGeminiCall(prompt, maxTokens)); }
 async function askGeminiJSON(prompt, maxTokens = 1024) { const raw = await askGemini(prompt + "\n\nRespond ONLY with valid JSON, no markdown fences, no extra text.", maxTokens); if (!raw) return null; const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim(); try { return JSON.parse(cleaned); } catch { return null; } }
-async function generateAIQuiz(topic, level, count = 5) { const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" for a ${level}-level AI/ML student. Return JSON array of objects with keys: "prompt" (question), "opts" (array of 4 {id,t} objects), "ans" (correct id), "why" (1 sentence explanation)`; return await askGeminiJSON(prompt, 1200); }
-async function reviewCode(code) { const prompt = `Review this code briefly (4 bullet points max): what it does, bugs, improvement, encouragement.\n\`\`\`\n${code}\n\`\`\``; return await askGemini(prompt, 400); }
+function _isValidQuizArray(qs, count) {
+  if (!Array.isArray(qs) || qs.length === 0) return false;
+  if (typeof count === "number" && qs.length < Math.min(3, count)) return false;
+  for (const q of qs) {
+    if (!q || typeof q.prompt !== "string" || !q.prompt.trim()) return false;
+    if (!Array.isArray(q.opts) || q.opts.length < 2) return false;
+    const ids = new Set();
+    for (const o of q.opts) {
+      if (!o || typeof o.id !== "string" || typeof o.t !== "string") return false;
+      ids.add(o.id);
+    }
+    if (typeof q.ans !== "string" || !ids.has(q.ans)) return false;
+  }
+  return true;
+}
+
+function _fallbackQuizBank() {
+  // Keep questions dependency-free and aligned with lessons.
+  return {
+    basics: [
+      { prompt: "Which best describes machine learning?", opts: [{ id: "a", t: "Hard-coding rules for every case" }, { id: "b", t: "Learning patterns from data to make predictions" }, { id: "c", t: "Storing files in the cloud" }, { id: "d", t: "Only drawing charts" }], ans: "b", why: "ML uses data to learn a mapping from inputs to outputs." },
+      { prompt: "In a dataset, features (X) are…", opts: [{ id: "a", t: "The answers you want to predict" }, { id: "b", t: "The inputs the model uses" }, { id: "c", t: "Always images" }, { id: "d", t: "Random noise" }], ans: "b", why: "Features are the inputs; labels are the targets." },
+      { prompt: "A train/test split is used to…", opts: [{ id: "a", t: "Make training faster only" }, { id: "b", t: "Estimate performance on unseen data" }, { id: "c", t: "Remove all noise" }, { id: "d", t: "Increase model size" }], ans: "b", why: "Testing on unseen data measures generalization." },
+      { prompt: "Overfitting means…", opts: [{ id: "a", t: "Model performs well on train but poorly on test" }, { id: "b", t: "Model has too little data" }, { id: "c", t: "Model is always linear" }, { id: "d", t: "Accuracy is always 100%" }], ans: "a", why: "Overfitting is memorizing training patterns/noise rather than general rules." },
+    ],
+    linreg: [
+      { prompt: "Linear regression predicts a…", opts: [{ id: "a", t: "Category" }, { id: "b", t: "Continuous value" }, { id: "c", t: "Random label" }, { id: "d", t: "Sorting order" }], ans: "b", why: "Regression outputs a real number." },
+      { prompt: "OLS fitting minimizes…", opts: [{ id: "a", t: "Sum of squared errors" }, { id: "b", t: "Number of features" }, { id: "c", t: "Maximum value of y" }, { id: "d", t: "Model size" }], ans: "a", why: "Ordinary least squares minimizes squared residuals (MSE)." },
+      { prompt: "MSE increases most when…", opts: [{ id: "a", t: "All errors are tiny" }, { id: "b", t: "A single error is large" }, { id: "c", t: "You add more features" }, { id: "d", t: "You rename variables" }], ans: "b", why: "Squaring penalizes large errors heavily." },
+    ],
+    logreg: [
+      { prompt: "Logistic regression outputs…", opts: [{ id: "a", t: "Any real number" }, { id: "b", t: "A probability between 0 and 1" }, { id: "c", t: "Only integers" }, { id: "d", t: "A centroid" }], ans: "b", why: "The sigmoid maps values into (0,1)." },
+      { prompt: "The decision boundary occurs where…", opts: [{ id: "a", t: "σ(z)=0.5 (z=0)" }, { id: "b", t: "σ(z)=1" }, { id: "c", t: "z is maximum" }, { id: "d", t: "loss is always zero" }], ans: "a", why: "At 0.5 probability, the model is indifferent between classes." },
+    ],
+    knn: [
+      { prompt: "KNN predicts by…", opts: [{ id: "a", t: "Fitting a line" }, { id: "b", t: "Voting among nearest neighbors" }, { id: "c", t: "Backpropagation" }, { id: "d", t: "Random guessing" }], ans: "b", why: "KNN uses distance to find neighbors and vote (or average)." },
+      { prompt: "Increasing K usually makes the decision boundary…", opts: [{ id: "a", t: "More jagged" }, { id: "b", t: "Smoother" }, { id: "c", t: "Always circular" }, { id: "d", t: "Undefined" }], ans: "b", why: "More neighbors reduces sensitivity to noise." },
+    ],
+    dtree: [
+      { prompt: "A decision tree chooses splits to…", opts: [{ id: "a", t: "Maximize impurity" }, { id: "b", t: "Best separate classes (increase information gain)" }, { id: "c", t: "Use every feature equally" }, { id: "d", t: "Avoid labels" }], ans: "b", why: "Splits aim to separate classes (e.g., maximize information gain)." },
+      { prompt: "Pruning helps reduce…", opts: [{ id: "a", t: "Underfitting" }, { id: "b", t: "Overfitting" }, { id: "c", t: "Feature values" }, { id: "d", t: "Dataset size" }], ans: "b", why: "Pruning simplifies the tree to generalize better." },
+    ],
+    gradient: [
+      { prompt: "Gradient descent updates parameters by moving…", opts: [{ id: "a", t: "Up the gradient" }, { id: "b", t: "Down the gradient of the loss" }, { id: "c", t: "Randomly" }, { id: "d", t: "Only once" }], ans: "b", why: "It moves opposite the gradient to reduce loss." },
+      { prompt: "A too-large learning rate can cause…", opts: [{ id: "a", t: "Faster and always stable convergence" }, { id: "b", t: "Overshooting and bouncing/diverging" }, { id: "c", t: "Zero gradients" }, { id: "d", t: "More data" }], ans: "b", why: "Big steps can overshoot the minimum." },
+    ],
+    mixed: [],
+  };
+}
+
+function _shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function _pickFallbackQuestions(topicId, topicName, count = 5) {
+  const bank = _fallbackQuizBank();
+  const id = String(topicId || "").toLowerCase();
+  const name = String(topicName || "").toLowerCase();
+  const pickFrom = (arr) => _shuffle(arr).slice(0, count);
+
+  let pool = [];
+  if (id === "basics" || name.includes("basic")) pool = bank.basics;
+  else if (id === "linreg" || name.includes("linear regression")) pool = bank.linreg;
+  else if (id === "logreg" || name.includes("logistic regression")) pool = bank.logreg;
+  else if (id === "knn" || name.includes("k-nearest") || name.includes("knn")) pool = bank.knn;
+  else if (id === "dtree" || name.includes("decision tree")) pool = bank.dtree;
+  else if (id === "gradient" || name.includes("gradient descent")) pool = bank.gradient;
+  else pool = [...bank.basics, ...bank.linreg, ...bank.logreg, ...bank.knn, ...bank.dtree, ...bank.gradient];
+
+  // Ensure we always have enough by mixing in the global fallback.
+  const global = QUIZ_QS.map(q => ({ prompt: q.prompt, opts: q.opts, ans: q.ans, why: q.why }));
+  const merged = [...pool, ...global];
+  return pickFrom(merged);
+}
+
+async function generateAIQuiz(topic, level, count = 5) {
+  const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" for a ${level}-level AI/ML student. Return JSON array of objects with keys: "prompt" (question), "opts" (array of 4 {id,t} objects), "ans" (correct id), "why" (1 sentence explanation)`;
+  const qs = await askGeminiJSON(prompt, 1200);
+  return _isValidQuizArray(qs, count) ? qs : null;
+}
+
+async function generateQuizWithFallback(topicId, topicName, level, count = 5) {
+  const qs = await generateAIQuiz(topicName, level, count);
+  if (qs) return { qs, source: "ai" };
+  return { qs: _pickFallbackQuestions(topicId, topicName, count), source: "built-in" };
+}
+function _localCodeReviewFallback(code) {
+  const src = String(code || "");
+  const lines = src.split(/\r?\n/);
+  const nonEmpty = lines.filter(l => l.trim()).length;
+  const maxLen = Math.max(0, ...lines.map(l => l.length));
+  const hasPrint = /\bprint\s*\(/.test(src);
+  const hasIf = /\bif\b/.test(src);
+  const hasLoop = /\bfor\b|\bwhile\b/.test(src);
+  const hasFn = /\bdef\b|\bfunction\b/.test(src);
+  const hasAssign = /^[A-Za-z_]\w*\s*=/.test(lines.join("\n"));
+
+  const warnings = [];
+  if (maxLen > 120) warnings.push("Some lines are very long; consider breaking expressions for readability.");
+  if (!hasPrint) warnings.push("No output detected (no `print(...)`). If you expected output, add a print statement.");
+  if (!hasAssign && nonEmpty > 2) warnings.push("I don't see many assignments/updates; double-check that variables are being updated as intended.");
+  if (/==\s*None|!=\s*None/.test(src)) warnings.push("Prefer `is None` / `is not None` for None checks (Python style).");
+  if (/=\s*=\s*/.test(src)) warnings.push("Looks like there may be an `= =` typo (assignment vs equality).");
+  if (/\/\s*0\b/.test(src)) warnings.push("Potential division by zero.");
+
+  const whatItDoesParts = [];
+  if (hasLoop) whatItDoesParts.push("loops");
+  if (hasIf) whatItDoesParts.push("branches");
+  if (hasFn) whatItDoesParts.push("defines a function");
+  if (hasAssign) whatItDoesParts.push("uses variables");
+  const whatItDoes = whatItDoesParts.length ? `It ${whatItDoesParts.join(", ")}.` : "It’s a short snippet (hard to infer intent).";
+
+  const improvement = [];
+  if (nonEmpty > 0) improvement.push("Add a 1-line comment at the top stating the goal/input-output.");
+  if (hasLoop) improvement.push("Consider naming intermediate values clearly (e.g. `total`, `count`).");
+  improvement.push("Test with 2–3 small inputs (including edge cases) and confirm the output.");
+
+  const bugLine = warnings.length ? warnings[0] : "No obvious red flags from quick static checks.";
+
+  return [
+    `• What it does: ${whatItDoes}`,
+    `• Possible issue: ${bugLine}`,
+    `• Improvement: ${improvement[0]}`,
+    `• Encouragement: Nice work — keep iterating by testing and refining step by step.`,
+  ].join("\n");
+}
+
+async function reviewCode(code) {
+  const prompt = `Review this code briefly (4 bullet points max): what it does, bugs, improvement, encouragement.\n\`\`\`\n${code}\n\`\`\``;
+  const ai = await askGemini(prompt, 400);
+  if (ai && String(ai).trim()) return ai;
+  return _localCodeReviewFallback(code);
+}
 async function explainConcept(term, context) { const prompt = `Explain "${term}" in context of ${context || "AI/ML"} to a beginner. Simple analogy first, then 1-2 sentence technical definition. Under 60 words.`; return await askGemini(prompt, 200); }
 const chatHistory = [];
 async function chatWithTutor(message) { chatHistory.push({ role: "user", text: message }); const ctx = chatHistory.slice(-8).map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${m.text}`).join("\n"); const reply = await askGemini(`You are a friendly AI/ML tutor. Keep answers concise (2-4 sentences). Use analogies.\n\n${ctx}\n\nTutor:`, 300); chatHistory.push({ role: "tutor", text: reply }); return reply; }
@@ -4065,16 +4201,17 @@ function renderQuiz(user) {
 
   root.querySelectorAll(".quizTopic").forEach(btn => {
     btn.addEventListener("click", async () => {
+      const topicId = btn.dataset.tid;
       const topicName = btn.dataset.tname;
       const quizArea = $("quizArea");
       quizArea.innerHTML = `<div class="panel"><div class="aiBadge" style="margin:20px auto;display:flex;width:fit-content">✨ Generating questions about ${esc(topicName)}...</div></div>`;
-      const qs = await generateAIQuiz(topicName, user.level || "beginner", 5);
-      if (!qs || !Array.isArray(qs) || qs.length === 0) { renderFallbackQuiz(user, root); return; }
+      const result = await generateQuizWithFallback(topicId, topicName, user.level || "beginner", 5);
+      const qs = result.qs;
       quizArea.innerHTML = `
         <form id="aiQuizForm" class="panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div class="panelTitle">Quiz: ${esc(topicName)}</div>
-            <span class="aiBadge">✨ AI-generated</span>
+            <span class="aiBadge">${result.source === "ai" ? "✨ AI-generated" : "Built-in"}</span>
           </div>
           ${qs.map((q, i) => `
             <div style="padding:12px 0;border-bottom:1px solid var(--light-border)">
@@ -4098,7 +4235,7 @@ function renderQuiz(user) {
         let sc = 0;
         qs.forEach((q, i) => { const a = fd.get(`aq${i}`); const ok = a === q.ans; if (ok) sc++; const w = $(`aqw_${i}`); w.innerHTML = `${ok ? "✅ Correct!" : "❌ Not quite."} ${esc(q.why || "")}`; show(w); });
         const pts = sc * 20;
-        u = addPts(u, pts, "ai_quiz");
+        u = addPts(u, pts, result.source === "ai" ? "ai_quiz" : "quiz_fallback");
         u.prog = { ...u.prog, quiz: { ...u.prog.quiz, main: { s: sc, total: qs.length, at: todayKey() } } }; save(u);
         if (sc >= 4) addBadge(u, "quiz_master");
         $("aiQuizRes").innerHTML = `<b>${sc}/${qs.length}</b> — +${pts} pts`;
