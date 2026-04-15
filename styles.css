@@ -1041,6 +1041,57 @@ canvas { display: block; }
 }
 
 /* ── INTERACTIVE LESSONS ───────────────────────────────────── */
+.labWrap{
+  padding: 14px;
+  border-radius: var(--rSm);
+  background: var(--raised);
+  box-shadow: var(--neo-out);
+  border: 1px solid var(--light-border);
+}
+.labHead{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.labKicker{ font-size:12px; color: var(--sub); font-weight:600; }
+.labTitle{ margin:2px 0 0; font-size:16px; font-family: var(--head); }
+.labGrid{
+  display:grid;
+  grid-template-columns: minmax(240px, 340px) 1fr;
+  gap: 14px;
+  align-items:start;
+}
+.labControls{
+  display:flex;
+  flex-direction:column;
+  gap: 10px;
+}
+.labViz{
+  min-height: 260px;
+}
+.labNotes{
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--light-border);
+}
+.labCard{
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--canvas);
+  box-shadow: var(--neo-sm-in);
+}
+.labCardTitle{ font-family: var(--head); font-weight:800; font-size:13px; margin:0 0 6px; }
+.labRow{ display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:12px; }
+.labRow label{ font-weight:700; color: var(--sub); }
+.labRow input[type="range"]{ flex:1; }
+.labMono{ font-family: var(--mono); }
+.labCanvas{
+  width: 100%;
+  display:block;
+  background: var(--dark);
+  border-radius: 14px;
+  box-shadow: var(--neo-in);
+}
+@media (max-width: 900px){
+  .labGrid{ grid-template-columns: 1fr; }
+}
+
 .vizWrap {
   display: flex; flex-direction: column; gap: 16px;
 }

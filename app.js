@@ -207,7 +207,7 @@ const TOPICS = [
       { id:"logreg_1", title:"From Regression to Classification", desc:"Why a straight line isn't enough for categories" },
       { id:"logreg_2", title:"The Sigmoid Function", desc:"Squashing outputs into probabilities" },
       { id:"logreg_3", title:"Decision Boundary", desc:"Where the model draws the line between classes" },
-      { id:"logreg_4", title:"Log Loss", desc:"The cost function that guides logistic regression" }
+      { id:"logreg_4", title:"Interactive Visualizer", desc:"Tune w and b, watch the sigmoid and boundary move" }
     ]},
   { id:"perceptron", icon:"🧠", title:"Perceptron", desc:"The simplest neural unit — inputs, weights, and activation", level:"Beginner", category:"Neural Networks",
     subtopics:[
@@ -221,21 +221,21 @@ const TOPICS = [
       { id:"nn_1", title:"Layers & Architecture", desc:"How neurons are organized into layers" },
       { id:"nn_2", title:"Forward Pass", desc:"How data flows through the network" },
       { id:"nn_3", title:"Backpropagation", desc:"How the network learns from mistakes" },
-      { id:"nn_4", title:"Interactive Visualizer", desc:"Watch signals flow through a live network" }
+      { id:"nn_4", title:"Interactive Visualizer", desc:"Change inputs, see activations and output update" }
     ]},
   { id:"cnn", icon:"🖼️", title:"Convolutional Neural Net", desc:"Specialized networks that see patterns in images", level:"Advanced", category:"Neural Networks",
     subtopics:[
       { id:"cnn_1", title:"Convolution Operation", desc:"Sliding filters across images to detect features" },
       { id:"cnn_2", title:"Pooling Layers", desc:"Shrinking feature maps while keeping important info" },
       { id:"cnn_3", title:"Feature Hierarchy", desc:"From edges to objects — how CNNs build understanding" },
-      { id:"cnn_4", title:"Famous Architectures", desc:"LeNet, AlexNet, ResNet — milestones in vision AI" }
+      { id:"cnn_4", title:"Interactive Visualizer", desc:"Edit a filter and see convolution output" }
     ]},
   { id:"rnn", icon:"🔄", title:"Recurrent Neural Net", desc:"Networks with memory for sequential data", level:"Advanced", category:"Neural Networks",
     subtopics:[
       { id:"rnn_1", title:"Sequences & Time", desc:"Why order matters in language, music, and stock prices" },
       { id:"rnn_2", title:"Hidden State", desc:"The memory that carries information forward" },
       { id:"rnn_3", title:"Vanishing Gradients", desc:"Why basic RNNs forget and how LSTM fixes it" },
-      { id:"rnn_4", title:"LSTM & GRU", desc:"Gates that control what to remember and forget" }
+      { id:"rnn_4", title:"Interactive Visualizer", desc:"Watch hidden state evolve over a sequence" }
     ]},
   { id:"dtree", icon:"🌳", title:"Decision Tree", desc:"Classify data by asking yes/no questions", level:"Beginner", category:"Supervised",
     subtopics:[
@@ -249,14 +249,14 @@ const TOPICS = [
       { id:"rf_1", title:"Wisdom of Crowds", desc:"Why many weak models beat one strong model" },
       { id:"rf_2", title:"Bagging", desc:"Training each tree on a random subset of data" },
       { id:"rf_3", title:"Feature Randomness", desc:"Each tree sees different features — reducing correlation" },
-      { id:"rf_4", title:"Out-of-Bag Error", desc:"Free validation without a separate test set" }
+      { id:"rf_4", title:"Interactive Visualizer", desc:"See how many trees vote and why ensembles help" }
     ]},
   { id:"svm", icon:"⚔️", title:"Support Vector Machine", desc:"Find the widest gap between classes", level:"Intermediate", category:"Supervised",
     subtopics:[
       { id:"svm_1", title:"Maximum Margin", desc:"Why the widest street between classes generalizes best" },
       { id:"svm_2", title:"Support Vectors", desc:"The critical data points that define the boundary" },
       { id:"svm_3", title:"Kernel Trick", desc:"Bending space so curved boundaries become straight" },
-      { id:"svm_4", title:"Soft Margin", desc:"Allowing some misclassification for a better overall fit" }
+      { id:"svm_4", title:"Interactive Visualizer", desc:"Adjust boundary and margin; watch violations" }
     ]},
   { id:"knn", icon:"📍", title:"K-Nearest Neighbors", desc:"Classify by asking your closest neighbors to vote", level:"Beginner", category:"Supervised",
     subtopics:[
@@ -270,42 +270,42 @@ const TOPICS = [
       { id:"kmeans_1", title:"What is Clustering?", desc:"Finding natural groups without labels" },
       { id:"kmeans_2", title:"The Algorithm", desc:"Assign, update centroids, repeat until stable" },
       { id:"kmeans_3", title:"Choosing K", desc:"The elbow method and silhouette scores" },
-      { id:"kmeans_4", title:"Limitations", desc:"When clusters aren't round or evenly sized" }
+      { id:"kmeans_4", title:"Interactive Visualizer", desc:"Step assign/update and watch clusters form" }
     ]},
   { id:"pca", icon:"📐", title:"PCA", desc:"Reduce dimensions while keeping the most information", level:"Intermediate", category:"Unsupervised",
     subtopics:[
       { id:"pca_1", title:"The Curse of Dimensions", desc:"Why fewer features can mean better models" },
       { id:"pca_2", title:"Variance & Directions", desc:"Finding the axes of maximum spread" },
       { id:"pca_3", title:"Eigenvalues & Eigenvectors", desc:"The math behind principal components" },
-      { id:"pca_4", title:"Choosing Components", desc:"How many dimensions to keep" }
+      { id:"pca_4", title:"Interactive Visualizer", desc:"Rotate the axis and see variance captured" }
     ]},
   { id:"naive", icon:"📊", title:"Naive Bayes", desc:"Classify using probability and Bayes' theorem", level:"Beginner", category:"Supervised",
     subtopics:[
       { id:"naive_1", title:"Bayes' Theorem", desc:"Updating beliefs with new evidence" },
       { id:"naive_2", title:"The Naive Assumption", desc:"Treating features as independent — and why it works" },
       { id:"naive_3", title:"Spam Classification", desc:"A classic use case for Naive Bayes" },
-      { id:"naive_4", title:"Laplace Smoothing", desc:"Handling words the model has never seen" }
+      { id:"naive_4", title:"Interactive Visualizer", desc:"Move probabilities and see posterior update" }
     ]},
   { id:"gradient", icon:"⛰️", title:"Gradient Descent", desc:"Optimize models by rolling downhill on the loss surface", level:"Intermediate", category:"Optimization",
     subtopics:[
       { id:"gradient_1", title:"The Loss Landscape", desc:"Visualizing error as a surface to descend" },
       { id:"gradient_2", title:"Learning Rate", desc:"How big each step should be" },
       { id:"gradient_3", title:"SGD & Mini-Batch", desc:"Using subsets of data for faster updates" },
-      { id:"gradient_4", title:"Momentum & Adam", desc:"Smarter optimizers that learn to accelerate" }
+      { id:"gradient_4", title:"Interactive Visualizer", desc:"Step gradient descent and see loss drop" }
     ]},
   { id:"nlp", icon:"💬", title:"NLP Fundamentals", desc:"Teaching machines to understand human language", level:"Advanced", category:"Applied",
     subtopics:[
       { id:"nlp_1", title:"Tokenization", desc:"Breaking text into pieces a model can digest" },
       { id:"nlp_2", title:"Word Embeddings", desc:"Representing words as meaningful vectors" },
       { id:"nlp_3", title:"Attention Mechanism", desc:"How transformers focus on relevant words" },
-      { id:"nlp_4", title:"Transformers & GPT", desc:"The architecture behind modern language models" }
+      { id:"nlp_4", title:"Interactive Visualizer", desc:"Tokenize text and visualize bag-of-words" }
     ]},
   { id:"rl", icon:"🎮", title:"Reinforcement Learning", desc:"Agents that learn by trial, error, and reward", level:"Advanced", category:"Applied",
     subtopics:[
       { id:"rl_1", title:"Agent & Environment", desc:"The loop of observe, act, and receive reward" },
       { id:"rl_2", title:"Reward Signals", desc:"Designing rewards that lead to desired behavior" },
       { id:"rl_3", title:"Exploration vs Exploitation", desc:"Trying new things vs. sticking with what works" },
-      { id:"rl_4", title:"Q-Learning", desc:"Learning the value of actions from experience" }
+      { id:"rl_4", title:"Interactive Visualizer", desc:"Simulate ε-greedy exploration on a bandit" }
     ]},
 ];
 
@@ -336,6 +336,7 @@ function renderView(name) {
   if (!u) return;
   const map = {
     dashboard: renderDashboard,
+    progress: renderProgress,
     learn: renderLearn,
     learnTopic: () => {},
     lesson: () => {},
@@ -519,15 +520,139 @@ function renderDashboard(user) {
   }
 }
 
+// ── Progress Module ───────────────────────────────────────────────
+function renderProgress(user) {
+  const root = $("v_progress");
+  const mods = user.prog?.mods || {};
+  const totalLessons = TOPICS.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
+  const lessonsDone = Object.keys(mods).length;
+  const lessonPct = totalLessons ? Math.round((lessonsDone / totalLessons) * 100) : 0;
+
+  const topics = TOPICS.map(t => {
+    const total = t.subtopics.length;
+    const done = t.subtopics.filter(s => mods[s.id]).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    const nextSub = t.subtopics.find(s => !mods[s.id]) || null;
+    const lastDoneIso = t.subtopics
+      .map(s => mods[s.id])
+      .filter(Boolean)
+      .sort()
+      .slice(-1)[0] || null;
+    return { ...t, total, done, pct, nextSub, lastDoneIso };
+  });
+
+  const topicsDone = topics.filter(t => t.done === t.total && t.total > 0).length;
+  const nextTopic = topics.find(t => t.nextSub) || null;
+
+  const recent = Object.entries(mods)
+    .map(([id, iso]) => ({ id, iso }))
+    .sort((a, b) => (a.iso < b.iso ? 1 : -1))
+    .slice(0, 8)
+    .map(r => {
+      const t = TOPICS.find(tp => tp.subtopics.some(s => s.id === r.id));
+      const s = t?.subtopics.find(st => st.id === r.id);
+      if (!t || !s) return null;
+      return { topicId: t.id, topicTitle: t.title, subTitle: s.title, iso: r.iso, icon: t.icon };
+    })
+    .filter(Boolean);
+
+  root.innerHTML = `
+    <h2 style="margin:0 0 4px">Progress</h2>
+    <p class="sub" style="margin:0 0 16px">Track your learning across topics and lessons.</p>
+
+    <div class="panel" style="margin-bottom:16px">
+      <div class="g3">
+        <div class="statCard" style="box-shadow:none;background:var(--canvas)">
+          <div class="statVal">${lessonPct}%</div>
+          <div class="statLabel">Overall completion</div>
+        </div>
+        <div class="statCard" style="box-shadow:none;background:var(--canvas)">
+          <div class="statVal">${lessonsDone}/${totalLessons}</div>
+          <div class="statLabel">Lessons done</div>
+        </div>
+        <div class="statCard" style="box-shadow:none;background:var(--canvas)">
+          <div class="statVal">${topicsDone}/16</div>
+          <div class="statLabel">Topics completed</div>
+        </div>
+      </div>
+      <div class="pbar" style="margin-top:14px"><div style="width:${lessonPct}%"></div></div>
+      ${nextTopic ? `
+        <div class="sub" style="margin-top:10px">
+          Next up: <b>${esc(nextTopic.title)}</b> — ${esc(nextTopic.nextSub?.title || "")}
+          <button class="btn sm" id="progResumeBtn" type="button" style="margin-left:10px">Resume</button>
+        </div>
+      ` : `<div class="sub" style="margin-top:10px">Everything complete. Try the quiz or games to keep practicing.</div>`}
+    </div>
+
+    <div class="g2">
+      <div class="panel">
+        <div class="panelTitle">By topic</div>
+        <div style="display:grid;gap:10px;margin-top:10px">
+          ${topics.map(t => `
+            <div class="stNode" data-tid="${esc(t.id)}" style="margin:0;cursor:pointer">
+              <div style="width:34px;text-align:center;font-size:22px;line-height:28px">${t.icon}</div>
+              <div class="stInfo" style="flex:1">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div class="stTitle">${esc(t.title)}</div>
+                  <div class="sub" style="white-space:nowrap">${t.done}/${t.total}</div>
+                </div>
+                <div class="pbar" style="margin:8px 0 6px"><div style="width:${t.pct}%"></div></div>
+                <div class="sub">
+                  ${t.done === t.total
+                    ? `Completed ${t.lastDoneIso ? `• last: ${new Date(t.lastDoneIso).toLocaleDateString()}` : ""}`
+                    : `Next: ${esc(t.nextSub?.title || "—")}`}
+                </div>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panelTitle">Recent completions</div>
+        ${recent.length === 0
+          ? `<div class="sub" style="margin-top:10px">No completed lessons yet. Open a topic and tap “Mark Complete”.</div>`
+          : `<div class="activityList" style="margin-top:10px">
+              ${recent.map(r => `
+                <div class="actItem" data-tid="${esc(r.topicId)}">
+                  <div class="actDot" style="background:var(--success)"></div>
+                  <div style="flex:1">
+                    <div style="font-weight:700">${esc(r.topicTitle)} — ${esc(r.subTitle)}</div>
+                    <div class="sub">${new Date(r.iso).toLocaleString()}</div>
+                  </div>
+                  <button class="btn sm" type="button" data-open="1">Open</button>
+                </div>
+              `).join("")}
+            </div>`}
+      </div>
+    </div>
+  `;
+
+  const resumeBtn = $("progResumeBtn");
+  if (resumeBtn && nextTopic) resumeBtn.addEventListener("click", () => openLesson(nextTopic.id, nextTopic.nextSub.id));
+
+  root.querySelectorAll("[data-tid]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      const tid = el.dataset.tid;
+      if (!tid) return;
+      // if "Open" button inside recent list, still open topic (simple + consistent)
+      openTopic(tid);
+    });
+  });
+}
+
 // ── Section 8: Learn Module ─────────────────────────────────────
 function renderLearn(user) {
+  user = user || me();
+  if (!user) return;
   const root = $("v_learn");
+  const totalTopics = TOPICS.length || 1;
   const topicsDone = TOPICS.filter(t => t.subtopics.every(s => user.prog.mods[s.id])).length;
 
   root.innerHTML = `
     <h2 style="margin:0 0 4px">Learn AI/ML</h2>
-    <p class="sub" style="margin:0 0 16px">${topicsDone} of 16 topics completed</p>
-    <div class="pbar" style="margin-bottom:18px"><div style="width:${Math.round((topicsDone/16)*100)}%"></div></div>
+    <p class="sub" style="margin:0 0 16px">${topicsDone} of ${totalTopics} topics completed</p>
+    <div class="pbar" style="margin-bottom:18px"><div style="width:${Math.round((topicsDone/totalTopics)*100)}%"></div></div>
     <div class="learnGrid">
       ${TOPICS.map(t => {
         const done = t.subtopics.filter(s => user.prog.mods[s.id]).length;
@@ -1278,12 +1403,1379 @@ const LESSON_CONTENT = {
     </div>`,
 };
 
+// ── Interactive lesson registry (visual, hands-on mini-labs) ─────
+function labShell({ title, subtitle, controlsHtml, vizHtml, notesHtml }) {
+  return `
+    <div class="labWrap">
+      <div class="labHead">
+        <div>
+          <div class="labKicker">${esc(subtitle || "")}</div>
+          <h3 class="labTitle">${esc(title || "Interactive Lab")}</h3>
+        </div>
+      </div>
+      <div class="labGrid">
+        <div class="labControls">${controlsHtml || ""}</div>
+        <div class="labViz">${vizHtml || ""}</div>
+      </div>
+      ${notesHtml ? `<div class="labNotes">${notesHtml}</div>` : ""}
+    </div>
+  `;
+}
+
+const LAB_NOTES = {
+  linreg_4: `<div class="sub"><b>What to try:</b> seed points, then drag one point far away. Watch how the line and MSE change. Outliers matter.</div>`,
+  logreg_4: `<div class="sub"><b>What to try:</b> flip the sign of w. Notice the sigmoid curve flips direction and the boundary shifts.</div>`,
+  perceptron_4: `<div class="sub"><b>What to try:</b> keep inputs fixed and sweep the bias. You’re shifting the decision threshold.</div>`,
+  nn_4: `<div class="sub"><b>What to try:</b> randomize weights a few times. Same inputs can produce different outputs depending on parameters.</div>`,
+  cnn_4: `<div class="sub"><b>What to try:</b> draw an edge in the image (0s on left, 1s on right) and use an edge-style filter.</div>`,
+  rnn_4: `<div class="sub"><b>What to try:</b> increase |w_state|. The hidden state “remembers” longer (or explodes/oscillates if too large).</div>`,
+  dtree_4: `<div class="sub"><b>What to try:</b> grow 2–3 splits, then classify multiple samples. You’re traversing a decision path.</div>`,
+  rf_4: `<div class="sub"><b>What to try:</b> increase the number of trees. Voting becomes more stable than a single stump.</div>`,
+  svm_4: `<div class="sub"><b>What to try:</b> increase the margin and see more violations (harder constraint). Soft margins tolerate some errors.</div>`,
+  knn_4: `<div class="sub"><b>What to try:</b> switch K from 1 to 9. Larger K smooths predictions and reduces sensitivity to noise.</div>`,
+  kmeans_4: `<div class="sub"><b>What to try:</b> place centroids badly on purpose, then do Assign → Update repeatedly. It converges.</div>`,
+  pca_4: `<div class="sub"><b>What to try:</b> find the angle that maximizes variance share. That’s the first principal component.</div>`,
+  naive_4: `<div class="sub"><b>What to try:</b> make P(word|spam) close to P(word|ham). The word becomes uninformative.</div>`,
+  gradient_4: `<div class="sub"><b>What to try:</b> raise learning rate too high. You’ll overshoot and bounce instead of converging.</div>`,
+  nlp_4: `<div class="sub"><b>What to try:</b> repeat a word many times. Bag-of-words captures counts but ignores order.</div>`,
+  rl_4: `<div class="sub"><b>What to try:</b> compare ε=0 vs ε=0.5. With no exploration, you can get stuck with a bad arm.</div>`,
+};
+
+const INTERACTIVE_LESSONS = {
+  // Implementations are added/filled in below during the visualizer tasks.
+  linreg_4: (mount) => {
+    const uid = `lr_${Math.random().toString(36).slice(2, 8)}`;
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Controls</div>
+        <div class="sub">Click on the canvas to add points. Drag a point to move it.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn primary sm" id="${uid}_snap" type="button">Seed points</button>
+          <button class="btn ghost sm" id="${uid}_clear" type="button">Clear</button>
+        </div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">Live metrics</div>
+        <div id="${uid}_info" class="sub labMono" style="white-space:pre-wrap">Add at least 2 points.</div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const info = $(uid + "_info");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+
+    let pts = [];
+    let dragging = -1;
+
+    function fitLine() {
+      if (pts.length < 2) return null;
+      const n = pts.length;
+      let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+      pts.forEach(p => { sx += p.x; sy += p.y; sxy += p.x * p.y; sx2 += p.x * p.x; });
+      const denom = n * sx2 - sx * sx;
+      if (Math.abs(denom) < 1e-10) return null;
+      const m = (n * sxy - sx * sy) / denom;
+      const b = (sy - m * sx) / n;
+      let mse = 0;
+      pts.forEach(p => { mse += (p.y - (m * p.x + b)) ** 2; });
+      mse /= n;
+      return { m, b, mse };
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+
+      // axes
+      ctx.strokeStyle = "rgba(255,255,255,.07)";
+      ctx.lineWidth = 1;
+      for (let x = 60; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+      for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+      const fit = fitLine();
+      if (fit) {
+        ctx.beginPath();
+        ctx.moveTo(0, fit.b);
+        ctx.lineTo(W, fit.m * W + fit.b);
+        ctx.strokeStyle = "rgba(224,122,95,.85)";
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+
+        // residuals
+        pts.forEach(p => {
+          const pred = fit.m * p.x + fit.b;
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x, pred);
+          ctx.strokeStyle = "rgba(255,107,107,.28)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        });
+        info.textContent = `y = ${fit.m.toFixed(4)}·x + ${fit.b.toFixed(2)}\nMSE = ${fit.mse.toFixed(1)}\nPoints: ${pts.length}`;
+      } else {
+        info.textContent = pts.length < 2 ? "Add at least 2 points." : "Line fit is unstable (points nearly vertical).";
+      }
+
+      pts.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = i === dragging ? "rgba(107,255,184,.75)" : "rgba(107,158,158,.85)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.25)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    }
+
+    function toXY(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+    }
+    function hitTest(x, y) {
+      for (let i = pts.length - 1; i >= 0; i--) {
+        if (Math.hypot(pts[i].x - x, pts[i].y - y) <= 12) return i;
+      }
+      return -1;
+    }
+
+    canvas.addEventListener("mousedown", (e) => {
+      const { x, y } = toXY(e);
+      const hit = hitTest(x, y);
+      if (hit >= 0) { dragging = hit; draw(); return; }
+      pts.push({ x, y });
+      draw();
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (dragging < 0) return;
+      const { x, y } = toXY(e);
+      pts[dragging] = { x: clamp(x, 0, W), y: clamp(y, 0, H) };
+      draw();
+    });
+    window.addEventListener("mouseup", () => { if (dragging >= 0) { dragging = -1; draw(); } });
+
+    $(uid + "_clear").addEventListener("click", () => { pts = []; draw(); });
+    $(uid + "_snap").addEventListener("click", () => {
+      pts = Array.from({ length: 6 }, (_, i) => ({
+        x: 120 + i * 90 + (Math.random() * 20 - 10),
+        y: 260 - i * 25 + (Math.random() * 40 - 20),
+      }));
+      draw();
+    });
+    draw();
+  },
+
+  knn_4: (mount) => {
+    const uid = `knn_${Math.random().toString(36).slice(2, 8)}`;
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Controls</div>
+        <div class="labRow"><label>K</label><input id="${uid}_k" type="range" min="1" max="9" step="2" value="3"><span class="labMono" id="${uid}_kv">3</span></div>
+        <div class="sub">Left click = Blue, Right click = Red. Toggle classify mode, then click to predict.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn primary sm" id="${uid}_mode" type="button">Classify mode</button>
+          <button class="btn ghost sm" id="${uid}_seed" type="button">Seed</button>
+          <button class="btn ghost sm" id="${uid}_clear" type="button">Clear</button>
+        </div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">Result</div>
+        <div id="${uid}_info" class="sub">Place some points to get started.</div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+
+    let points = [];
+    let classifyMode = false;
+    let lastQuery = null;
+    let lastNeighbors = [];
+
+    const kEl = $(uid + "_k");
+    const kv = $(uid + "_kv");
+    const info = $(uid + "_info");
+    const modeBtn = $(uid + "_mode");
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+
+      if (lastQuery && lastNeighbors.length) {
+        lastNeighbors.forEach(n => {
+          ctx.beginPath();
+          ctx.moveTo(lastQuery.x, lastQuery.y);
+          ctx.lineTo(n.x, n.y);
+          ctx.strokeStyle = "rgba(107,158,158,.35)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        });
+      }
+
+      points.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fillStyle = p.cls === 0 ? "rgba(224,122,95,.85)" : "rgba(255,107,107,.85)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.2)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      if (lastQuery) {
+        ctx.beginPath();
+        ctx.arc(lastQuery.x, lastQuery.y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = lastQuery.cls === 0 ? "rgba(224,122,95,.45)" : "rgba(255,107,107,.45)";
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 9px var(--sans)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("?", lastQuery.x, lastQuery.y);
+        ctx.textBaseline = "alphabetic";
+      }
+    }
+
+    function toXY(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+    }
+    function classify(qx, qy) {
+      const k = parseInt(kEl.value, 10);
+      const dists = points.map(p => ({ ...p, d: Math.hypot(p.x - qx, p.y - qy) }));
+      dists.sort((a, b) => a.d - b.d);
+      const neighbors = dists.slice(0, Math.min(k, dists.length));
+      lastNeighbors = neighbors;
+      const votes = [0, 0];
+      neighbors.forEach(n => votes[n.cls]++);
+      const cls = votes[0] >= votes[1] ? 0 : 1;
+      lastQuery = { x: qx, y: qy, cls };
+      draw();
+      info.innerHTML = `K=${k} | Blue ${votes[0]} vs Red ${votes[1]} → <b>${cls === 0 ? "Blue" : "Red"}</b>`;
+    }
+
+    canvas.addEventListener("click", (e) => {
+      const { x, y } = toXY(e);
+      if (classifyMode && points.length >= 2) { classify(x, y); return; }
+      points.push({ x, y, cls: 0 });
+      draw();
+    });
+    canvas.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      const { x, y } = toXY(e);
+      points.push({ x, y, cls: 1 });
+      draw();
+    });
+
+    kEl.addEventListener("input", () => { kv.textContent = kEl.value; if (lastQuery) classify(lastQuery.x, lastQuery.y); });
+    modeBtn.addEventListener("click", () => {
+      classifyMode = !classifyMode;
+      modeBtn.textContent = classifyMode ? "Place mode" : "Classify mode";
+    });
+    $(uid + "_clear").addEventListener("click", () => { points = []; lastQuery = null; lastNeighbors = []; info.textContent = "Cleared."; draw(); });
+    $(uid + "_seed").addEventListener("click", () => {
+      points = [];
+      for (let i = 0; i < 8; i++) points.push({ x: 140 + Math.random() * 220, y: 90 + Math.random() * 260, cls: 0 });
+      for (let i = 0; i < 8; i++) points.push({ x: 380 + Math.random() * 220, y: 90 + Math.random() * 260, cls: 1 });
+      lastQuery = null; lastNeighbors = [];
+      info.textContent = "Seeded. Try classify mode.";
+      draw();
+    });
+    draw();
+  },
+
+  perceptron_4: (mount) => {
+    const uid = `pc_${Math.random().toString(36).slice(2, 8)}`;
+    const state = { x1: 0.6, x2: 0.4, w1: 0.7, w2: -0.3, bias: -0.2 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Inputs & weights</div>
+        <div class="labRow"><label>x₁</label><input id="${uid}_x1" type="range" min="-1" max="1" step="0.05" value="${state.x1}"><span id="${uid}_vx1" class="labMono">${state.x1.toFixed(2)}</span></div>
+        <div class="labRow"><label>x₂</label><input id="${uid}_x2" type="range" min="-1" max="1" step="0.05" value="${state.x2}"><span id="${uid}_vx2" class="labMono">${state.x2.toFixed(2)}</span></div>
+        <div class="labRow"><label>w₁</label><input id="${uid}_w1" type="range" min="-2" max="2" step="0.05" value="${state.w1}"><span id="${uid}_vw1" class="labMono">${state.w1.toFixed(2)}</span></div>
+        <div class="labRow"><label>w₂</label><input id="${uid}_w2" type="range" min="-2" max="2" step="0.05" value="${state.w2}"><span id="${uid}_vw2" class="labMono">${state.w2.toFixed(2)}</span></div>
+        <div class="labRow"><label>bias</label><input id="${uid}_b" type="range" min="-2" max="2" step="0.05" value="${state.bias}"><span id="${uid}_vb" class="labMono">${state.bias.toFixed(2)}</span></div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">Live computation</div>
+        <div id="${uid}_math" class="sub labMono" style="white-space:pre-wrap"></div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+
+    const mathEl = $(uid + "_math");
+    const sigmoid = (z) => 1 / (1 + Math.exp(-z));
+
+    function compute() {
+      const z = state.x1 * state.w1 + state.x2 * state.w2 + state.bias;
+      const out = sigmoid(z);
+      return { z, out, fired: out > 0.5 };
+    }
+
+    function draw() {
+      const { z, out, fired } = compute();
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+
+      const nodeR = 30;
+      const in1 = { x: 120, y: 150, label: "x₁", val: state.x1 };
+      const in2 = { x: 120, y: 280, label: "x₂", val: state.x2 };
+      const sum = { x: 360, y: 215, label: "Σ" };
+      const act = { x: 520, y: 215, label: "σ" };
+      const outN = { x: 650, y: 215, label: fired ? "1" : "0" };
+
+      function edge(a, b, label, intensity) {
+        const alpha = 0.15 + Math.min(1, Math.abs(intensity)) * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(a.x + nodeR, a.y);
+        ctx.lineTo(b.x - nodeR, b.y);
+        ctx.strokeStyle = intensity >= 0 ? `rgba(224,122,95,${alpha})` : `rgba(255,107,107,${alpha})`;
+        ctx.lineWidth = 1.5 + Math.min(1, Math.abs(intensity)) * 3;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(200,195,185,.85)";
+        ctx.font = "bold 11px var(--mono)";
+        ctx.textAlign = "center";
+        ctx.fillText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
+      }
+      edge(in1, sum, `w₁=${state.w1.toFixed(2)}`, state.w1);
+      edge(in2, sum, `w₂=${state.w2.toFixed(2)}`, state.w2);
+      edge(sum, act, `z=${z.toFixed(2)}`, clamp(z / 3, -1, 1));
+      edge(act, outN, `${out.toFixed(2)}`, out);
+
+      function node(n, fill) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.15)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 16px var(--sans)";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(n.label, n.x, n.y);
+        if (n.val !== undefined) {
+          ctx.font = "11px var(--mono)";
+          ctx.fillStyle = "rgba(200,195,185,.75)";
+          ctx.fillText(n.val.toFixed(2), n.x, n.y - nodeR - 10);
+        }
+        ctx.textBaseline = "alphabetic";
+      }
+      node(in1, "rgba(224,122,95,.18)");
+      node(in2, "rgba(224,122,95,.18)");
+      node(sum, "rgba(107,158,158,.18)");
+      node(act, "rgba(107,158,158,.25)");
+      node(outN, fired ? "rgba(107,255,184,.22)" : "rgba(255,107,107,.16)");
+
+      ctx.fillStyle = "rgba(200,195,185,.7)";
+      ctx.font = "bold 12px var(--mono)";
+      ctx.textAlign = "center";
+      ctx.fillText(`bias=${state.bias.toFixed(2)}`, sum.x, sum.y + nodeR + 20);
+
+      mathEl.textContent = `z = ${state.x1.toFixed(2)}·${state.w1.toFixed(2)} + ${state.x2.toFixed(2)}·${state.w2.toFixed(2)} + ${state.bias.toFixed(2)} = ${z.toFixed(4)}\nσ(z) = ${out.toFixed(4)}\nDecision: ${fired ? "Class 1" : "Class 0"}`;
+    }
+
+    function bind(key, elId, valId) {
+      const el = $(elId);
+      const v = $(valId);
+      el.addEventListener("input", () => {
+        state[key] = parseFloat(el.value);
+        v.textContent = state[key].toFixed(2);
+        draw();
+      });
+    }
+    bind("x1", `${uid}_x1`, `${uid}_vx1`);
+    bind("x2", `${uid}_x2`, `${uid}_vx2`);
+    bind("w1", `${uid}_w1`, `${uid}_vw1`);
+    bind("w2", `${uid}_w2`, `${uid}_vw2`);
+    bind("bias", `${uid}_b`, `${uid}_vb`);
+    draw();
+  },
+
+  dtree_4: (mount) => {
+    const uid = `dt_${Math.random().toString(36).slice(2, 8)}`;
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Tree builder</div>
+        <div class="sub">Grow splits one-by-one, then classify a random sample to see the path.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="${uid}_grow" class="btn primary sm" type="button">Grow</button>
+          <button id="${uid}_classify" class="btn sm" type="button">Classify sample</button>
+          <button id="${uid}_reset" class="btn ghost sm" type="button">Reset</button>
+        </div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">Info</div>
+        <div id="${uid}_info" class="sub labMono" style="white-space:pre-wrap">Click Grow to add the first split.</div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="820" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 820, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+
+    const info = $(uid + "_info");
+    const questions = [
+      { q: "Age > 30?", test: (s) => s.age > 30 },
+      { q: "Income > 50k?", test: (s) => s.income > 50 },
+      { q: "Has degree?", test: (s) => !!s.degree },
+      { q: "Experience > 5y?", test: (s) => s.exp > 5 },
+    ];
+
+    let nodes, edges, growIdx;
+    function reset() {
+      nodes = [{ id: 0, depth: 0, x: W / 2, y: 60, rule: "Root", leaf: true, label: "?" }];
+      edges = [];
+      growIdx = 0;
+      layout(); draw();
+      info.textContent = "Click Grow to add the first split.";
+    }
+    function layout() {
+      const byDepth = {};
+      nodes.forEach(n => { (byDepth[n.depth] ||= []).push(n); });
+      Object.keys(byDepth).forEach(d => {
+        const arr = byDepth[d];
+        const gap = W / (arr.length + 1);
+        arr.forEach((n, i) => { n.x = gap * (i + 1); n.y = 60 + parseInt(d, 10) * 110; });
+      });
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+
+      edges.forEach(e => {
+        const from = nodes.find(n => n.id === e.from);
+        const to = nodes.find(n => n.id === e.to);
+        if (!from || !to) return;
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y + 24);
+        ctx.lineTo(to.x, to.y - 24);
+        ctx.strokeStyle = e.label === "Yes" ? "rgba(107,255,184,.55)" : "rgba(255,107,107,.45)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = e.label === "Yes" ? "rgba(107,255,184,.85)" : "rgba(255,107,107,.8)";
+        ctx.font = "bold 11px var(--sans)";
+        ctx.textAlign = "center";
+        ctx.fillText(e.label, (from.x + to.x) / 2 + (e.label === "Yes" ? -16 : 16), (from.y + to.y) / 2);
+      });
+
+      nodes.forEach(n => {
+        if (n.leaf) {
+          ctx.beginPath();
+          ctx.roundRect(n.x - 34, n.y - 20, 68, 40, 12);
+          ctx.fillStyle =
+            n.label === "Approve" ? "rgba(107,255,184,.18)" :
+            n.label === "Reject" ? "rgba(255,107,107,.16)" :
+            "rgba(107,158,158,.16)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,.12)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 12px var(--sans)";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(n.label, n.x, n.y);
+          ctx.textBaseline = "alphabetic";
+        } else {
+          ctx.beginPath();
+          ctx.arc(n.x, n.y, 24, 0, Math.PI * 2);
+          ctx.fillStyle = "rgba(224,122,95,.15)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(224,122,95,.35)";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 10px var(--sans)";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(n.rule, n.x, n.y);
+          ctx.textBaseline = "alphabetic";
+        }
+      });
+    }
+
+    function grow() {
+      if (growIdx >= questions.length) { info.textContent = "Tree is fully grown."; return; }
+      const leaves = nodes.filter(n => n.leaf);
+      if (!leaves.length) return;
+      const target = leaves[0];
+      const q = questions[growIdx++];
+      target.leaf = false;
+      target.rule = q.q;
+      const yesId = nodes.length;
+      const noId = nodes.length + 1;
+      nodes.push({ id: yesId, depth: target.depth + 1, x: 0, y: 0, leaf: true, label: growIdx >= questions.length ? "Approve" : "?" });
+      nodes.push({ id: noId, depth: target.depth + 1, x: 0, y: 0, leaf: true, label: growIdx >= questions.length - 1 ? "Reject" : "?" });
+      edges.push({ from: target.id, to: yesId, label: "Yes" });
+      edges.push({ from: target.id, to: noId, label: "No" });
+      layout(); draw();
+      info.textContent = `Added split: ${q.q}`;
+    }
+
+    function classify() {
+      if (growIdx === 0) { info.textContent = "Grow the tree first."; return; }
+      const sample = {
+        age: Math.round(Math.random() * 50 + 18),
+        income: Math.round(Math.random() * 80 + 20),
+        degree: Math.random() > 0.5,
+        exp: Math.round(Math.random() * 15),
+      };
+      let path = `Sample: age=${sample.age}, income=${sample.income}k, degree=${sample.degree ? "yes" : "no"}, exp=${sample.exp}y\nPath: `;
+      let nodeId = 0;
+      for (let i = 0; i < growIdx; i++) {
+        const n = nodes.find(x => x.id === nodeId);
+        if (!n || n.leaf) break;
+        const yes = questions[i].test(sample);
+        path += `${n.rule} → ${yes ? "Yes" : "No"} → `;
+        const edge = edges.find(e => e.from === nodeId && e.label === (yes ? "Yes" : "No"));
+        if (!edge) break;
+        nodeId = edge.to;
+      }
+      const final = nodes.find(x => x.id === nodeId);
+      path += final ? final.label : "?";
+      info.textContent = path;
+    }
+
+    $(uid + "_grow").addEventListener("click", grow);
+    $(uid + "_classify").addEventListener("click", classify);
+    $(uid + "_reset").addEventListener("click", reset);
+    reset();
+  },
+
+  // Remaining topic visualizers (minimum viable interaction each)
+  logreg_4: (mount) => {
+    const uid = `lg_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { w: 2.0, b: -1.0, thr: 0.5 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Sigmoid classifier</div>
+        <div class="labRow"><label>w</label><input id="${uid}_w" type="range" min="-6" max="6" step="0.1" value="${st.w}"><span id="${uid}_vw" class="labMono">${st.w.toFixed(1)}</span></div>
+        <div class="labRow"><label>b</label><input id="${uid}_b" type="range" min="-6" max="6" step="0.1" value="${st.b}"><span id="${uid}_vb" class="labMono">${st.b.toFixed(1)}</span></div>
+        <div class="labRow"><label>threshold</label><input id="${uid}_t" type="range" min="0.1" max="0.9" step="0.05" value="${st.thr}"><span id="${uid}_vt" class="labMono">${st.thr.toFixed(2)}</span></div>
+        <div class="sub">This is 1D logistic regression: \(p=\\sigma(wx+b)\). Move sliders and watch the curve + decision point.</div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+    const sig = (z) => 1 / (1 + Math.exp(-z));
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+      // axes
+      ctx.strokeStyle = "rgba(255,255,255,.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(60, H - 60); ctx.lineTo(W - 40, H - 60); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(60, H - 60); ctx.lineTo(60, 40); ctx.stroke();
+      ctx.fillStyle = "rgba(200,195,185,.65)";
+      ctx.font = "12px var(--mono)";
+      ctx.fillText("x", W - 50, H - 40);
+      ctx.fillText("p", 42, 50);
+
+      // curve
+      ctx.beginPath();
+      for (let i = 0; i <= 240; i++) {
+        const x = -6 + (12 * i) / 240;
+        const p = sig(st.w * x + st.b);
+        const px = 60 + ((x + 6) / 12) * (W - 120);
+        const py = (H - 60) - p * (H - 120);
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = "rgba(224,122,95,.9)";
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+
+      // threshold line
+      const thY = (H - 60) - st.thr * (H - 120);
+      ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.moveTo(60, thY); ctx.lineTo(W - 40, thY); ctx.strokeStyle = "rgba(107,158,158,.55)"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(200,195,185,.75)";
+      ctx.fillText(`threshold=${st.thr.toFixed(2)}`, 70, thY - 8);
+
+      // decision boundary at p=0.5 -> wx+b=0 -> x=-b/w
+      const x0 = Math.abs(st.w) < 1e-6 ? 0 : -st.b / st.w;
+      const px0 = 60 + ((clamp(x0, -6, 6) + 6) / 12) * (W - 120);
+      ctx.beginPath();
+      ctx.moveTo(px0, H - 60);
+      ctx.lineTo(px0, 40);
+      ctx.strokeStyle = "rgba(255,255,255,.18)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = "rgba(200,195,185,.75)";
+      ctx.fillText(`boundary x≈${x0.toFixed(2)}`, px0 + 8, 54);
+    }
+
+    function bind(id, key, fmt) {
+      const el = $(id);
+      const v = $(id.replace(/_.$/, "_v" + key[0])); // not used
+    }
+    const wEl = $(uid + "_w"), bEl = $(uid + "_b"), tEl = $(uid + "_t");
+    const vw = $(uid + "_vw"), vb = $(uid + "_vb"), vt = $(uid + "_vt");
+    wEl.addEventListener("input", () => { st.w = parseFloat(wEl.value); vw.textContent = st.w.toFixed(1); draw(); });
+    bEl.addEventListener("input", () => { st.b = parseFloat(bEl.value); vb.textContent = st.b.toFixed(1); draw(); });
+    tEl.addEventListener("input", () => { st.thr = parseFloat(tEl.value); vt.textContent = st.thr.toFixed(2); draw(); });
+    draw();
+  },
+
+  nn_4: (mount) => {
+    // Tiny forward-pass demo with random weights
+    const uid = `nn_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { in1: 0.2, in2: 0.8 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Inputs</div>
+        <div class="labRow"><label>x₁</label><input id="${uid}_i1" type="range" min="0" max="1" step="0.01" value="${st.in1}"><span id="${uid}_vi1" class="labMono">${st.in1.toFixed(2)}</span></div>
+        <div class="labRow"><label>x₂</label><input id="${uid}_i2" type="range" min="0" max="1" step="0.01" value="${st.in2}"><span id="${uid}_vi2" class="labMono">${st.in2.toFixed(2)}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="${uid}_rand" class="btn primary sm" type="button">Randomize weights</button>
+        </div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">Output</div>
+        <div id="${uid}_out" class="sub labMono" style="white-space:pre-wrap"></div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+    const outEl = $(uid + "_out");
+    const sig = (z) => 1 / (1 + Math.exp(-z));
+
+    let w = { h11: Math.random() * 2 - 1, h12: Math.random() * 2 - 1, h21: Math.random() * 2 - 1, h22: Math.random() * 2 - 1, o1: Math.random() * 2 - 1, o2: Math.random() * 2 - 1, b1: 0.2, b2: -0.1, bo: 0.1 };
+    function forward() {
+      const h1 = sig(st.in1 * w.h11 + st.in2 * w.h21 + w.b1);
+      const h2 = sig(st.in1 * w.h12 + st.in2 * w.h22 + w.b2);
+      const o = sig(h1 * w.o1 + h2 * w.o2 + w.bo);
+      return { h1, h2, o };
+    }
+    function draw() {
+      const { h1, h2, o } = forward();
+      outEl.textContent = `Hidden: [${h1.toFixed(3)}, ${h2.toFixed(3)}]\nOutput: ${o.toFixed(4)}`;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+      const nodes = {
+        i1: { x: 140, y: 140, a: st.in1, l: "x₁" },
+        i2: { x: 140, y: 280, a: st.in2, l: "x₂" },
+        h1: { x: 360, y: 170, a: h1, l: "h₁" },
+        h2: { x: 360, y: 250, a: h2, l: "h₂" },
+        o: { x: 580, y: 210, a: o, l: "ŷ" },
+      };
+      function edge(a, b, ww) {
+        ctx.beginPath(); ctx.moveTo(a.x + 22, a.y); ctx.lineTo(b.x - 22, b.y);
+        ctx.strokeStyle = ww >= 0 ? `rgba(224,122,95,${0.15 + Math.abs(ww) * 0.35})` : `rgba(255,107,107,${0.15 + Math.abs(ww) * 0.35})`;
+        ctx.lineWidth = 1 + Math.abs(ww) * 2;
+        ctx.stroke();
+      }
+      edge(nodes.i1, nodes.h1, w.h11); edge(nodes.i2, nodes.h1, w.h21);
+      edge(nodes.i1, nodes.h2, w.h12); edge(nodes.i2, nodes.h2, w.h22);
+      edge(nodes.h1, nodes.o, w.o1); edge(nodes.h2, nodes.o, w.o2);
+      function node(n) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, 22, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(107,158,158,${0.12 + n.a * 0.45})`;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.15)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = "#fff"; ctx.font = "bold 12px var(--mono)";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(n.a.toFixed(2), n.x, n.y);
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "rgba(200,195,185,.75)"; ctx.font = "bold 12px var(--sans)";
+        ctx.fillText(n.l, n.x, n.y - 32);
+      }
+      Object.values(nodes).forEach(node);
+    }
+    function bind(id, key, vid) {
+      const el = $(id), v = $(vid);
+      el.addEventListener("input", () => { st[key] = parseFloat(el.value); v.textContent = st[key].toFixed(2); draw(); });
+    }
+    bind(uid + "_i1", "in1", uid + "_vi1");
+    bind(uid + "_i2", "in2", uid + "_vi2");
+    $(uid + "_rand").addEventListener("click", () => { w = { h11: Math.random() * 2 - 1, h12: Math.random() * 2 - 1, h21: Math.random() * 2 - 1, h22: Math.random() * 2 - 1, o1: Math.random() * 2 - 1, o2: Math.random() * 2 - 1, b1: Math.random() * 0.6 - 0.3, b2: Math.random() * 0.6 - 0.3, bo: Math.random() * 0.6 - 0.3 }; draw(); });
+    draw();
+  },
+
+  rf_4: (mount) => {
+    const uid = `rf_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { x: 0.5, n: 7 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Forest vote (toy)</div>
+        <div class="labRow"><label>trees</label><input id="${uid}_n" type="range" min="3" max="15" step="2" value="${st.n}"><span id="${uid}_vn" class="labMono">${st.n}</span></div>
+        <div class="labRow"><label>x</label><input id="${uid}_x" type="range" min="0" max="1" step="0.01" value="${st.x}"><span id="${uid}_vx" class="labMono">${st.x.toFixed(2)}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="${uid}_regen" class="btn primary sm" type="button">Regenerate trees</button>
+        </div>
+        <div class="sub">Each tree is a stump: “x &gt; threshold?”. The forest votes.</div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">Result</div><div id="${uid}_info" class="sub"></div></div>
+    `;
+    mount.viz.innerHTML = `<div id="${uid}_bars"></div>`;
+    const bars = $(uid + "_bars");
+    const info = $(uid + "_info");
+    let thresholds = [];
+    function regen() {
+      thresholds = Array.from({ length: st.n }, () => Math.random());
+      render();
+    }
+    function render() {
+      const yes = thresholds.filter(t => st.x > t).length;
+      const no = thresholds.length - yes;
+      const cls = yes >= no ? "Class 1" : "Class 0";
+      info.innerHTML = `Votes: <b>${yes}</b> yes vs <b>${no}</b> no → <b>${cls}</b>`;
+      bars.innerHTML = `
+        <div class="panel">
+          <div class="panelTitle">Tree votes</div>
+          <div style="display:grid;gap:8px;margin-top:10px">
+            ${thresholds.map((t, i) => {
+              const v = st.x > t;
+              return `<div class="sub" style="display:flex;align-items:center;gap:10px">
+                <span class="labMono" style="width:52px">T${i + 1}</span>
+                <div style="flex:1;height:10px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
+                  <div style="width:${Math.round(t * 100)}%;height:100%;background:rgba(107,158,158,.25)"></div>
+                </div>
+                <span class="pill ${v ? "pillGlow" : ""}" style="margin:0">${v ? "Yes" : "No"}</span>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+    const nEl = $(uid + "_n"), xEl = $(uid + "_x"), vn = $(uid + "_vn"), vx = $(uid + "_vx");
+    nEl.addEventListener("input", () => { st.n = parseInt(nEl.value, 10); vn.textContent = st.n; regen(); });
+    xEl.addEventListener("input", () => { st.x = parseFloat(xEl.value); vx.textContent = st.x.toFixed(2); render(); });
+    $(uid + "_regen").addEventListener("click", regen);
+    regen();
+  },
+
+  svm_4: (mount) => {
+    const uid = `svm_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { angle: 20, offset: 0.0, margin: 0.25 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Max-margin separator (toy)</div>
+        <div class="labRow"><label>angle</label><input id="${uid}_a" type="range" min="-80" max="80" step="1" value="${st.angle}"><span id="${uid}_va" class="labMono">${st.angle}°</span></div>
+        <div class="labRow"><label>offset</label><input id="${uid}_o" type="range" min="-0.6" max="0.6" step="0.01" value="${st.offset}"><span id="${uid}_vo" class="labMono">${st.offset.toFixed(2)}</span></div>
+        <div class="labRow"><label>margin</label><input id="${uid}_m" type="range" min="0.05" max="0.5" step="0.01" value="${st.margin}"><span id="${uid}_vm" class="labMono">${st.margin.toFixed(2)}</span></div>
+        <div class="sub">Rotate/shift the hyperplane and see which points violate the margin.</div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">Stats</div><div id="${uid}_info" class="sub"></div></div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+    const info = $(uid + "_info");
+    const pts = [];
+    for (let i = 0; i < 18; i++) pts.push({ x: 0.25 + Math.random() * 0.18, y: 0.25 + Math.random() * 0.5, cls: 0 });
+    for (let i = 0; i < 18; i++) pts.push({ x: 0.58 + Math.random() * 0.18, y: 0.25 + Math.random() * 0.5, cls: 1 });
+    function sign(p) {
+      const th = (st.angle * Math.PI) / 180;
+      const nx = Math.cos(th), ny = Math.sin(th);
+      const d = (p.x - 0.5) * nx + (p.y - 0.5) * ny + st.offset;
+      return d;
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+      const th = (st.angle * Math.PI) / 180;
+      const nx = Math.cos(th), ny = Math.sin(th);
+
+      // draw decision line and margins in normalized space
+      function lineAt(c, alpha) {
+        // points satisfying (x-0.5)nx + (y-0.5)ny + offset = c
+        const ptsL = [];
+        for (let t = 0; t <= 1; t += 0.02) {
+          // solve for y given x=t: (t-0.5)nx + (y-0.5)ny + offset = c
+          if (Math.abs(ny) < 1e-6) continue;
+          const y = 0.5 + (c - st.offset - (t - 0.5) * nx) / ny;
+          if (y >= 0 && y <= 1) ptsL.push({ x: t, y });
+        }
+        if (ptsL.length < 2) return;
+        ctx.beginPath();
+        ptsL.forEach((p, i) => {
+          const px = 70 + p.x * (W - 140);
+          const py = 50 + p.y * (H - 100);
+          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        });
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      lineAt(0, 0.22);
+      ctx.setLineDash([6, 6]);
+      lineAt(st.margin, 0.14);
+      lineAt(-st.margin, 0.14);
+      ctx.setLineDash([]);
+
+      let viol = 0;
+      pts.forEach(p => {
+        const d = sign(p);
+        const y = p.cls === 0 ? -1 : 1;
+        const m = y * d;
+        const bad = m < st.margin;
+        if (bad) viol++;
+        const px = 70 + p.x * (W - 140);
+        const py = 50 + p.y * (H - 100);
+        ctx.beginPath();
+        ctx.arc(px, py, bad ? 8 : 6, 0, Math.PI * 2);
+        ctx.fillStyle = p.cls === 0 ? "rgba(224,122,95,.85)" : "rgba(107,255,184,.75)";
+        ctx.fill();
+        ctx.strokeStyle = bad ? "rgba(255,107,107,.9)" : "rgba(255,255,255,.18)";
+        ctx.lineWidth = bad ? 2 : 1;
+        ctx.stroke();
+      });
+      info.innerHTML = `Margin violations: <b>${viol}</b> / ${pts.length}`;
+    }
+    const aEl = $(uid + "_a"), oEl = $(uid + "_o"), mEl = $(uid + "_m");
+    const va = $(uid + "_va"), vo = $(uid + "_vo"), vm = $(uid + "_vm");
+    aEl.addEventListener("input", () => { st.angle = parseFloat(aEl.value); va.textContent = `${st.angle}°`; draw(); });
+    oEl.addEventListener("input", () => { st.offset = parseFloat(oEl.value); vo.textContent = st.offset.toFixed(2); draw(); });
+    mEl.addEventListener("input", () => { st.margin = parseFloat(mEl.value); vm.textContent = st.margin.toFixed(2); draw(); });
+    draw();
+  },
+
+  kmeans_4: (mount) => {
+    const uid = `km_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { k: 3 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">K-Means (stepper)</div>
+        <div class="sub">Click to place centroids (up to K). Then step: assign → update.</div>
+        <div class="labRow"><label>K</label><input id="${uid}_k" type="range" min="2" max="5" step="1" value="${st.k}"><span id="${uid}_vk" class="labMono">${st.k}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="${uid}_assign" class="btn primary sm" type="button">Assign</button>
+          <button id="${uid}_update" class="btn sm" type="button">Update</button>
+          <button id="${uid}_reset" class="btn ghost sm" type="button">Reset</button>
+        </div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">Inertia</div><div id="${uid}_info" class="sub labMono"></div></div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+
+    const colors = ["rgba(224,122,95,.85)", "rgba(107,255,184,.75)", "rgba(107,158,158,.85)", "rgba(255,107,107,.85)", "rgba(255,210,107,.85)"];
+    let points = [];
+    let centroids = [];
+    const info = $(uid + "_info");
+    function gen() {
+      points = [];
+      for (let i = 0; i < 45; i++) points.push({ x: 70 + Math.random() * (W - 140), y: 60 + Math.random() * (H - 120), c: -1 });
+    }
+    function assign() {
+      points.forEach(p => {
+        if (!centroids.length) { p.c = -1; return; }
+        let best = 0, bd = 1e9;
+        centroids.forEach((c, i) => {
+          const d = (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
+          if (d < bd) { bd = d; best = i; }
+        });
+        p.c = best;
+      });
+      draw();
+    }
+    function update() {
+      if (!centroids.length) return;
+      const sums = centroids.map(() => ({ x: 0, y: 0, n: 0 }));
+      points.forEach(p => {
+        if (p.c < 0) return;
+        const s = sums[p.c];
+        s.x += p.x; s.y += p.y; s.n++;
+      });
+      centroids = centroids.map((c, i) => sums[i].n ? ({ x: sums[i].x / sums[i].n, y: sums[i].y / sums[i].n }) : c);
+      draw();
+    }
+    function inertia() {
+      let s = 0;
+      points.forEach(p => {
+        if (p.c < 0 || !centroids[p.c]) return;
+        s += (p.x - centroids[p.c].x) ** 2 + (p.y - centroids[p.c].y) ** 2;
+      });
+      return s;
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+      points.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = p.c < 0 ? "rgba(200,195,185,.35)" : colors[p.c % colors.length];
+        ctx.fill();
+      });
+      centroids.forEach((c, i) => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+      info.textContent = `inertia=${Math.round(inertia())} | centroids=${centroids.length}/${st.k}`;
+    }
+    canvas.addEventListener("click", (e) => {
+      if (centroids.length >= st.k) return;
+      const r = canvas.getBoundingClientRect();
+      centroids.push({ x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) });
+      draw();
+    });
+    $(uid + "_assign").addEventListener("click", assign);
+    $(uid + "_update").addEventListener("click", update);
+    $(uid + "_reset").addEventListener("click", () => { centroids = []; gen(); draw(); });
+    const kEl = $(uid + "_k"), vk = $(uid + "_vk");
+    kEl.addEventListener("input", () => { st.k = parseInt(kEl.value, 10); vk.textContent = st.k; centroids = []; gen(); draw(); });
+    gen(); draw();
+  },
+
+  pca_4: (mount) => {
+    const uid = `pca_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { ang: 30 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">PCA intuition (2D)</div>
+        <div class="labRow"><label>axis angle</label><input id="${uid}_a" type="range" min="0" max="180" step="1" value="${st.ang}"><span id="${uid}_va" class="labMono">${st.ang}°</span></div>
+        <div class="sub">Rotate the axis and see how much variance you capture along that direction.</div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">Variance captured</div><div id="${uid}_info" class="sub labMono"></div></div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+    const info = $(uid + "_info");
+    const pts = Array.from({ length: 60 }, () => {
+      // elongated cloud
+      const t = (Math.random() * 2 - 1) * 1.4;
+      const n = (Math.random() * 2 - 1) * 0.35;
+      const x = 0.5 + 0.28 * t + 0.08 * n;
+      const y = 0.5 + 0.10 * t - 0.20 * n;
+      return { x, y };
+    });
+    function varianceAlong(theta) {
+      const ux = Math.cos(theta), uy = Math.sin(theta);
+      const proj = pts.map(p => (p.x - 0.5) * ux + (p.y - 0.5) * uy);
+      const mean = proj.reduce((a, b) => a + b, 0) / proj.length;
+      return proj.reduce((s, v) => s + (v - mean) ** 2, 0) / proj.length;
+    }
+    function draw() {
+      const th = (st.ang * Math.PI) / 180;
+      const v = varianceAlong(th);
+      const v90 = varianceAlong(th + Math.PI / 2);
+      const ratio = v / (v + v90);
+      info.textContent = `var_axis=${v.toFixed(4)} | share=${(ratio * 100).toFixed(1)}%`;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+      const ox = W / 2, oy = H / 2;
+      pts.forEach(p => {
+        const x = ox + (p.x - 0.5) * 520;
+        const y = oy + (p.y - 0.5) * 320;
+        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(107,158,158,.85)";
+        ctx.fill();
+      });
+      // axis line
+      const ux = Math.cos(th), uy = Math.sin(th);
+      ctx.beginPath();
+      ctx.moveTo(ox - ux * 260, oy - uy * 260);
+      ctx.lineTo(ox + ux * 260, oy + uy * 260);
+      ctx.strokeStyle = "rgba(224,122,95,.9)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    const aEl = $(uid + "_a"), va = $(uid + "_va");
+    aEl.addEventListener("input", () => { st.ang = parseFloat(aEl.value); va.textContent = `${st.ang}°`; draw(); });
+    draw();
+  },
+
+  naive_4: (mount) => {
+    const uid = `nb_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { pSpam: 0.4, pWordSpam: 0.7, pWordHam: 0.1 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Naive Bayes posterior</div>
+        <div class="labRow"><label>P(spam)</label><input id="${uid}_ps" type="range" min="0.05" max="0.95" step="0.01" value="${st.pSpam}"><span id="${uid}_vps" class="labMono">${st.pSpam.toFixed(2)}</span></div>
+        <div class="labRow"><label>P(word|spam)</label><input id="${uid}_pws" type="range" min="0.01" max="0.99" step="0.01" value="${st.pWordSpam}"><span id="${uid}_vpws" class="labMono">${st.pWordSpam.toFixed(2)}</span></div>
+        <div class="labRow"><label>P(word|ham)</label><input id="${uid}_pwh" type="range" min="0.01" max="0.99" step="0.01" value="${st.pWordHam}"><span id="${uid}_vpwh" class="labMono">${st.pWordHam.toFixed(2)}</span></div>
+        <div class="sub">Compute \(P(spam|word) \\propto P(word|spam)P(spam)\).</div>
+      </div>
+    `;
+    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">Posterior</div><div id="${uid}_out" class="sub labMono" style="white-space:pre-wrap;margin-top:8px"></div><div style="display:grid;gap:8px;margin-top:10px"><div style="height:14px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)"><div id="${uid}_barS" style="height:100%"></div></div><div style="height:14px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)"><div id="${uid}_barH" style="height:100%"></div></div></div><div class="sub" style="margin-top:8px">Top bar = spam posterior, bottom = ham posterior.</div></div>`;
+    const out = $(uid + "_out");
+    const barS = $(uid + "_barS");
+    const barH = $(uid + "_barH");
+    function render() {
+      const pHam = 1 - st.pSpam;
+      const numS = st.pWordSpam * st.pSpam;
+      const numH = st.pWordHam * pHam;
+      const denom = numS + numH;
+      const postS = denom ? numS / denom : 0.5;
+      const postH = 1 - postS;
+      out.textContent = `P(spam|word) = ${postS.toFixed(4)}\nP(ham|word)  = ${postH.toFixed(4)}`;
+      barS.style.width = `${Math.round(postS * 100)}%`;
+      barS.style.background = "linear-gradient(90deg, var(--coral), var(--teal))";
+      barH.style.width = `${Math.round(postH * 100)}%`;
+      barH.style.background = "linear-gradient(90deg, rgba(107,158,158,.7), rgba(224,122,95,.35))";
+    }
+    const ps = $(uid + "_ps"), pws = $(uid + "_pws"), pwh = $(uid + "_pwh");
+    const vps = $(uid + "_vps"), vpws = $(uid + "_vpws"), vpwh = $(uid + "_vpwh");
+    ps.addEventListener("input", () => { st.pSpam = parseFloat(ps.value); vps.textContent = st.pSpam.toFixed(2); render(); });
+    pws.addEventListener("input", () => { st.pWordSpam = parseFloat(pws.value); vpws.textContent = st.pWordSpam.toFixed(2); render(); });
+    pwh.addEventListener("input", () => { st.pWordHam = parseFloat(pwh.value); vpwh.textContent = st.pWordHam.toFixed(2); render(); });
+    render();
+  },
+
+  gradient_4: (mount) => {
+    const uid = `gd_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { w: -3.0, lr: 0.2, steps: 0 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Gradient descent (1D)</div>
+        <div class="labRow"><label>learning rate</label><input id="${uid}_lr" type="range" min="0.01" max="0.6" step="0.01" value="${st.lr}"><span id="${uid}_vlr" class="labMono">${st.lr.toFixed(2)}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="${uid}_step" class="btn primary sm" type="button">Step</button>
+          <button id="${uid}_run" class="btn sm" type="button">Run 10</button>
+          <button id="${uid}_reset" class="btn ghost sm" type="button">Reset</button>
+        </div>
+        <div class="sub">We minimize \(L(w)=(w-2)^2\\). Gradient is \(dL/dw=2(w-2)\\).</div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">State</div><div id="${uid}_info" class="sub labMono" style="white-space:pre-wrap"></div></div>
+    `;
+    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
+    const canvas = $(uid + "_c");
+    const ctx = canvas.getContext("2d");
+    const W = 720, H = 420;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = "100%"; canvas.style.height = "auto";
+    ctx.scale(dpr, dpr);
+    const info = $(uid + "_info");
+    function loss(w) { return (w - 2) ** 2; }
+    function grad(w) { return 2 * (w - 2); }
+    function draw() {
+      info.textContent = `w=${st.w.toFixed(4)}\nL=${loss(st.w).toFixed(4)}\nsteps=${st.steps}`;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "rgba(42,42,60,.55)";
+      ctx.fillRect(0, 0, W, H);
+      // plot curve for w in [-6, 6]
+      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
+      let maxL = 0;
+      for (let i = 0; i <= 240; i++) { const wv = -6 + (12 * i) / 240; maxL = Math.max(maxL, loss(wv)); }
+      ctx.beginPath();
+      for (let i = 0; i <= 240; i++) {
+        const wv = -6 + (12 * i) / 240;
+        const L = loss(wv);
+        const px = x0 + ((wv + 6) / 12) * pw;
+        const py = y0 - (L / maxL) * ph;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = "rgba(224,122,95,.9)";
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      // current point
+      const px = x0 + ((st.w + 6) / 12) * pw;
+      const py = y0 - (loss(st.w) / maxL) * ph;
+      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(107,255,184,.75)";
+      ctx.fill();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    function step() {
+      st.w = st.w - st.lr * grad(st.w);
+      st.steps++;
+      draw();
+    }
+    const lrEl = $(uid + "_lr"), vlr = $(uid + "_vlr");
+    lrEl.addEventListener("input", () => { st.lr = parseFloat(lrEl.value); vlr.textContent = st.lr.toFixed(2); });
+    $(uid + "_step").addEventListener("click", step);
+    $(uid + "_run").addEventListener("click", () => { for (let i = 0; i < 10; i++) step(); });
+    $(uid + "_reset").addEventListener("click", () => { st.w = -3; st.steps = 0; draw(); });
+    draw();
+  },
+
+  cnn_4: (mount) => {
+    const uid = `cnn_${Math.random().toString(36).slice(2, 8)}`;
+    // 5x5 image + 3x3 filter -> 3x3 output
+    let img = Array.from({ length: 25 }, () => 0);
+    let ker = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+    function cellHtml(id, v) {
+      const a = clamp((v + 2) / 6, 0, 1);
+      return `<div data-c="${id}" style="aspect-ratio:1;border-radius:6px;box-shadow:var(--neo-sm-in);background:rgba(224,122,95,${0.15 + a * 0.6});display:grid;place-items:center;color:rgba(0,0,0,.65);font-family:var(--mono);font-size:12px;cursor:pointer">${v}</div>`;
+    }
+    function gridHtml(prefix, arr, n, editable) {
+      return `<div class="vizGrid" style="grid-template-columns:repeat(${n},1fr);gap:8px;background:transparent">
+        ${arr.map((v, i) => editable ? cellHtml(prefix + "_" + i, v) : `<div style="aspect-ratio:1;border-radius:6px;box-shadow:var(--neo-sm-in);background:rgba(107,158,158,${0.12 + clamp((v + 10) / 20, 0, 1) * 0.5});display:grid;place-items:center;color:rgba(0,0,0,.65);font-family:var(--mono);font-size:12px">${v.toFixed ? v.toFixed(0) : v}</div>`).join("")}
+      </div>`;
+    }
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">5×5 image</div>
+        <div class="sub">Click cells to toggle 0/1.</div>
+        <div id="${uid}_img" style="margin-top:10px"></div>
+      </div>
+      <div class="labCard">
+        <div class="labCardTitle">3×3 filter</div>
+        <div class="sub">Click to cycle -1 → 0 → 1.</div>
+        <div id="${uid}_ker" style="margin-top:10px"></div>
+      </div>
+    `;
+    mount.viz.innerHTML = `
+      <div class="panel">
+        <div class="panelTitle">Convolution output (3×3)</div>
+        <div id="${uid}_out" style="margin-top:10px"></div>
+        <div class="sub" style="margin-top:10px">Try making a vertical edge in the image, then use an edge-detect filter.</div>
+      </div>
+    `;
+    const imgEl = $(uid + "_img");
+    const kerEl = $(uid + "_ker");
+    const outEl = $(uid + "_out");
+    function conv() {
+      const out = [];
+      for (let y = 0; y < 3; y++) {
+        for (let x = 0; x < 3; x++) {
+          let s = 0;
+          for (let ky = 0; ky < 3; ky++) for (let kx = 0; kx < 3; kx++) {
+            const iv = img[(y + ky) * 5 + (x + kx)];
+            const kv = ker[ky * 3 + kx];
+            s += iv * kv;
+          }
+          out.push(s);
+        }
+      }
+      return out;
+    }
+    function render() {
+      imgEl.innerHTML = gridHtml(uid + "img", img, 5, true);
+      kerEl.innerHTML = gridHtml(uid + "ker", ker, 3, true);
+      const out = conv();
+      outEl.innerHTML = gridHtml(uid + "out", out, 3, false);
+      imgEl.querySelectorAll("[data-c]").forEach(n => n.addEventListener("click", () => {
+        const i = parseInt(n.dataset.c.split("_").pop(), 10);
+        img[i] = img[i] ? 0 : 1;
+        render();
+      }));
+      kerEl.querySelectorAll("[data-c]").forEach(n => n.addEventListener("click", () => {
+        const i = parseInt(n.dataset.c.split("_").pop(), 10);
+        ker[i] = ker[i] === -1 ? 0 : ker[i] === 0 ? 1 : -1;
+        render();
+      }));
+    }
+    render();
+  },
+
+  rnn_4: (mount) => {
+    const uid = `rnn_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { wIn: 0.9, wState: 0.7, steps: 6 };
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">RNN state update</div>
+        <div class="labRow"><label>w_in</label><input id="${uid}_wi" type="range" min="-1.5" max="1.5" step="0.05" value="${st.wIn}"><span id="${uid}_vwi" class="labMono">${st.wIn.toFixed(2)}</span></div>
+        <div class="labRow"><label>w_state</label><input id="${uid}_ws" type="range" min="-1.5" max="1.5" step="0.05" value="${st.wState}"><span id="${uid}_vws" class="labMono">${st.wState.toFixed(2)}</span></div>
+        <div class="labRow"><label>length</label><input id="${uid}_len" type="range" min="3" max="12" step="1" value="${st.steps}"><span id="${uid}_vlen" class="labMono">${st.steps}</span></div>
+        <div class="sub">State: \(h_t=\\tanh(w_{in}x_t+w_{state}h_{t-1})\\).</div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">Sequence</div><div id="${uid}_seq" class="sub labMono"></div></div>
+    `;
+    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">State over time</div><div id="${uid}_bars" style="margin-top:10px"></div></div>`;
+    const seqEl = $(uid + "_seq");
+    const bars = $(uid + "_bars");
+    let xs = [];
+    function regen() { xs = Array.from({ length: st.steps }, () => (Math.random() * 2 - 1)); }
+    function compute() {
+      const hs = [];
+      let h = 0;
+      xs.forEach(x => { h = Math.tanh(st.wIn * x + st.wState * h); hs.push(h); });
+      return hs;
+    }
+    function render() {
+      seqEl.textContent = `x: [${xs.map(v => v.toFixed(2)).join(", ")}]`;
+      const hs = compute();
+      bars.innerHTML = hs.map((h, i) => {
+        const w = Math.round(Math.abs(h) * 100);
+        const col = h >= 0 ? "linear-gradient(90deg, var(--teal), var(--coral))" : "linear-gradient(90deg, rgba(255,107,107,.65), rgba(224,122,95,.35))";
+        return `<div class="sub" style="display:flex;align-items:center;gap:10px;margin:6px 0">
+          <span class="labMono" style="width:54px">t=${i + 1}</span>
+          <div style="flex:1;height:12px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
+            <div style="width:${w}%;height:100%;background:${col}"></div>
+          </div>
+          <span class="labMono" style="width:56px;text-align:right">${h.toFixed(2)}</span>
+        </div>`;
+      }).join("");
+    }
+    function bind(id, key, vId, fmt) {
+      const el = $(id), v = $(vId);
+      el.addEventListener("input", () => { st[key] = key === "steps" ? parseInt(el.value, 10) : parseFloat(el.value); v.textContent = fmt(st[key]); regen(); render(); });
+    }
+    bind(uid + "_wi", "wIn", uid + "_vwi", (x) => x.toFixed(2));
+    bind(uid + "_ws", "wState", uid + "_vws", (x) => x.toFixed(2));
+    bind(uid + "_len", "steps", uid + "_vlen", (x) => String(x));
+    regen(); render();
+  },
+
+  nlp_4: (mount) => {
+    const uid = `nlp_${Math.random().toString(36).slice(2, 8)}`;
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">Tokenize text</div>
+        <div class="sub">Type a sentence. We’ll tokenize + show bag-of-words counts.</div>
+        <input id="${uid}_in" type="text" value="I love AI and I love visuals" style="width:100%;padding:10px 12px;border-radius:12px;border:none;box-shadow:var(--neo-sm-in);background:var(--canvas);font-family:var(--sans)" />
+      </div>
+      <div class="labCard"><div class="labCardTitle">Tokens</div><div id="${uid}_tok"></div></div>
+    `;
+    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">Bag-of-words</div><div id="${uid}_bow" style="margin-top:10px"></div></div>`;
+    const input = $(uid + "_in");
+    const tok = $(uid + "_tok");
+    const bow = $(uid + "_bow");
+    function tokenize(s) {
+      return String(s).toLowerCase().replace(/[^a-z0-9\\s]/g, " ").split(/\\s+/).filter(Boolean);
+    }
+    function render() {
+      const ts = tokenize(input.value);
+      tok.innerHTML = ts.map(t => `<span class="vizToken">${esc(t)}</span>`).join("") || `<div class="sub">No tokens.</div>`;
+      const counts = {};
+      ts.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+      const max = Math.max(1, ...entries.map(e => e[1]));
+      bow.innerHTML = entries.map(([w, c]) => `
+        <div class="sub" style="display:flex;align-items:center;gap:10px;margin:6px 0">
+          <span class="labMono" style="width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w)}</span>
+          <div style="flex:1;height:12px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
+            <div style="width:${Math.round((c / max) * 100)}%;height:100%;background:linear-gradient(90deg,var(--coral),var(--teal))"></div>
+          </div>
+          <span class="labMono" style="width:22px;text-align:right">${c}</span>
+        </div>
+      `).join("") || `<div class="sub">No counts.</div>`;
+    }
+    input.addEventListener("input", render);
+    render();
+  },
+
+  rl_4: (mount) => {
+    const uid = `rl_${Math.random().toString(36).slice(2, 8)}`;
+    const st = { eps: 0.3, pulls: 40 };
+    const arms = [0.3, 0.7, 0.5];
+    mount.controls.innerHTML = `
+      <div class="labCard">
+        <div class="labCardTitle">ε-greedy bandit</div>
+        <div class="labRow"><label>ε</label><input id="${uid}_e" type="range" min="0" max="1" step="0.05" value="${st.eps}"><span id="${uid}_ve" class="labMono">${st.eps.toFixed(2)}</span></div>
+        <div class="labRow"><label>pulls</label><input id="${uid}_p" type="range" min="10" max="120" step="5" value="${st.pulls}"><span id="${uid}_vp" class="labMono">${st.pulls}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button id="${uid}_run" class="btn primary sm" type="button">Simulate</button>
+        </div>
+        <div class="sub">Arms have true win rates: [0.3, 0.7, 0.5]. ε controls exploration.</div>
+      </div>
+      <div class="labCard"><div class="labCardTitle">Summary</div><div id="${uid}_sum" class="sub labMono" style="white-space:pre-wrap"></div></div>
+    `;
+    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">Pull counts</div><div id="${uid}_bars" style="margin-top:10px"></div></div>`;
+    const sum = $(uid + "_sum");
+    const bars = $(uid + "_bars");
+    function simulate() {
+      const q = [0, 0, 0];
+      const n = [0, 0, 0];
+      let reward = 0;
+      for (let t = 0; t < st.pulls; t++) {
+        const explore = Math.random() < st.eps;
+        let a = 0;
+        if (explore) a = Math.floor(Math.random() * 3);
+        else {
+          a = q.indexOf(Math.max(...q));
+        }
+        // pull
+        const r = Math.random() < arms[a] ? 1 : 0;
+        reward += r;
+        n[a] += 1;
+        q[a] += (r - q[a]) / n[a];
+      }
+      sum.textContent = `total_reward=${reward}\nq_est=[${q.map(x => x.toFixed(2)).join(", ")}]`;
+      const max = Math.max(1, ...n);
+      bars.innerHTML = n.map((c, i) => `
+        <div class="sub" style="display:flex;align-items:center;gap:10px;margin:8px 0">
+          <span class="labMono" style="width:60px">arm ${i + 1}</span>
+          <div style="flex:1;height:14px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
+            <div style="width:${Math.round((c / max) * 100)}%;height:100%;background:linear-gradient(90deg,var(--coral),var(--teal))"></div>
+          </div>
+          <span class="labMono" style="width:36px;text-align:right">${c}</span>
+        </div>
+      `).join("");
+    }
+    const eEl = $(uid + "_e"), pEl = $(uid + "_p"), ve = $(uid + "_ve"), vp = $(uid + "_vp");
+    eEl.addEventListener("input", () => { st.eps = parseFloat(eEl.value); ve.textContent = st.eps.toFixed(2); });
+    pEl.addEventListener("input", () => { st.pulls = parseInt(pEl.value, 10); vp.textContent = st.pulls; });
+    $(uid + "_run").addEventListener("click", simulate);
+    simulate();
+  },
+};
+
 function renderLesson(topicId, subtopicId, user) {
   const root = $("v_lesson");
   const topic = TOPICS.find(t => t.id === topicId);
   const sub = topic?.subtopics.find(s => s.id === subtopicId);
   if (!topic || !sub) return;
 
+  const interactive = INTERACTIVE_LESSONS[subtopicId];
   const content = LESSON_CONTENT[subtopicId] || `<div class="concept"><h3>${esc(sub.title)}</h3><p>${esc(sub.desc)}</p><p>This topic covers an important concept in ${esc(topic.title)}. Explore the interactive visualizer and quiz to deepen your understanding.</p></div>`;
   const isDone = !!user.prog.mods[subtopicId];
 
@@ -1296,13 +2788,37 @@ function renderLesson(topicId, subtopicId, user) {
         <h2 style="margin:0">${esc(sub.title)}</h2>
       </div>
     </div>
-    <div class="lessonContent">${content}</div>
+    <div class="lessonContent">
+      ${typeof interactive === "function"
+        ? labShell({
+            title: sub.title,
+            subtitle: topic.title,
+            controlsHtml: `<div id="labControls"></div>`,
+            vizHtml: `<div id="labViz"></div>`,
+            notesHtml: LAB_NOTES[subtopicId] || `<div class="sub"><b>Tip:</b> interact with the controls and watch the visualization update live.</div>`,
+          })
+        : content}
+    </div>
     <div style="margin-top:20px;display:flex;gap:10px;align-items:center">
       ${isDone
         ? '<span class="pill pillGlow">✓ Completed</span>'
         : `<button class="btn primary" id="markDoneBtn">Mark Complete (+25 pts)</button>`}
     </div>
   `;
+
+  if (typeof interactive === "function") {
+    try {
+      const mount = { controls: $("labControls"), viz: $("labViz"), root };
+      interactive(mount, { topicId, subtopicId, topic, sub, user });
+    } catch (e) {
+      const box = document.createElement("div");
+      box.className = "errBox";
+      box.textContent = "Interactive lab failed to load. Please refresh.";
+      const host = $("labViz");
+      if (host) host.prepend(box);
+      console.error(e);
+    }
+  }
 
   if (!isDone) {
     $("markDoneBtn").addEventListener("click", () => {
