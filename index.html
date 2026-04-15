@@ -20,7 +20,7 @@
         </div>
         <div class="topActions">
           <span id="userChip" class="chip hidden"></span>
-          <button id="btnDemo" class="btn ghost" type="button">Demo</button>
+          <button id="btnDemo" class="btn ghost" type="button">⭐ Demo</button>
           <button id="btnLogout" class="btn ghost hidden" type="button">Logout</button>
         </div>
       </header>
@@ -43,7 +43,7 @@
         </div>
       </section>
 
-      <!-- ONBOARDING (Brilliant-style questionnaire) -->
+      <!-- ONBOARDING -->
       <section id="onboardView" class="authWrap hidden">
         <div class="onboardCard" id="onboardInner"></div>
       </section>
@@ -52,39 +52,42 @@
       <section id="appView" class="appWrap hidden">
         <aside class="sidebar">
           <nav id="mainNav" class="navList">
-            <button class="navBtn active" data-r="syllabus" type="button">My Path</button>
-            <button class="navBtn" data-r="quiz" type="button">Quiz</button>
+            <button class="navBtn active" data-r="dashboard" type="button">Dashboard</button>
+            <button class="navBtn" data-r="learn" type="button">Learn</button>
             <button class="navBtn" data-r="playground" type="button">Playground</button>
+            <button class="navBtn" data-r="games" type="button">Games</button>
+            <button class="navBtn" data-r="quiz" type="button">Quiz</button>
             <button class="navBtn" data-r="simulate" type="button">Simulation</button>
-            <button class="navBtn" data-r="progress" type="button">Progress</button>
             <button class="navBtn" data-r="leaderboard" type="button">Leaderboard</button>
           </nav>
           <div class="sideInfo">
             <div class="sideInfoTitle">How to learn here</div>
-            <div class="sub">Pick a topic. Drag sliders. Hover components. Watch the math happen live.</div>
+            <div class="sub">Pick a topic. Drag sliders. Play games. Watch the math happen live.</div>
           </div>
         </aside>
         <main class="content">
-          <div id="v_syllabus" class="view"></div>
-          <div id="v_topics" class="view hidden"></div>
+          <div id="v_dashboard" class="view"></div>
+          <div id="v_learn" class="view hidden"></div>
+          <div id="v_learnTopic" class="view hidden"></div>
+          <div id="v_lesson" class="view hidden"></div>
           <div id="v_perceptron" class="view hidden"></div>
           <div id="v_nn" class="view hidden"></div>
           <div id="v_dtree" class="view hidden"></div>
           <div id="v_knn" class="view hidden"></div>
           <div id="v_linreg" class="view hidden"></div>
-          <div id="v_quiz" class="view hidden"></div>
           <div id="v_playground" class="view hidden"></div>
+          <div id="v_games" class="view hidden"></div>
+          <div id="v_game" class="view hidden"></div>
+          <div id="v_quiz" class="view hidden"></div>
           <div id="v_simulate" class="view hidden"></div>
-          <div id="v_progress" class="view hidden"></div>
+          <div id="v_simulation" class="view hidden"></div>
           <div id="v_leaderboard" class="view hidden"></div>
         </main>
       </section>
 
-      <!-- TOOLTIP (global, positioned absolutely) -->
       <div id="tooltip" class="tooltip hidden"></div>
     </div>
 
-    <!-- Chatbot FAB + Panel are injected by app.js -->
     <script src="./app.js"></script>
   </body>
 </html>
