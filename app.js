@@ -1,7 +1,19 @@
 /* ================================================================
    AIML Quest — Interactive Visual Learning Platform
-   Zero dependencies. Canvas-based visualizations.
+   Firebase Auth + Canvas-based visualizations.
    ================================================================ */
+
+// ── Firebase Setup ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyD3OVuRbT_8uTgOtQpxk_eENtGNe5xwjZs",
+  authDomain: "aiml-quest.firebaseapp.com",
+  projectId: "aiml-quest",
+  storageBucket: "aiml-quest.firebasestorage.app",
+  messagingSenderId: "755057288339",
+  appId: "1:755057288339:web:aa7ab690492daa70f45966"
+};
+firebase.initializeApp(firebaseConfig);
+const fbAuth = firebase.auth();
 
 // ── Section 1: Helpers ──────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -31,7 +43,7 @@ async function sha256(s) { const b = await crypto.subtle.digest("SHA-256", new T
 // 3. Create a proxy API endpoint that your frontend calls
 // 4. Backend makes the Gemini call with the serverside key
 // More info: See README.md "Security Notes" section
-const GEMINI_KEY = "AIzaSyDDtKlFx_T72J560-DihvlgQ69zwmhpTO0";
+const GEMINI_KEY = "AIzaSyBIHEKXsavCDJBZrGwI4Ui3xthcvhGfHs0";
 const GEMINI_MODELS = ["gemini-2.0-flash-lite","gemini-2.0-flash","gemini-1.5-flash"];
 function geminiUrl(model) { return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`; }
 const _geminiQueue = [];
@@ -58,7 +70,24 @@ const saveUsers = (u) => wLS(LS_USERS, u);
 const loadSess = () => rLS(LS_SESS, null);
 const saveSess = (s) => wLS(LS_SESS, s);
 const clearSess = () => localStorage.removeItem(LS_SESS);
-function me() { const s=loadSess(); if(!s?.uid) return null; return loadUsers().find(u=>u.id===s.uid)||null; }
+
+function me() {
+  const fbUser = fbAuth.currentUser;
+  if (fbUser) {
+    const all = loadUsers();
+    let u = all.find(x => x.email === fbUser.email);
+    if (!u) {
+      u = freshUser(fbUser.email);
+      u.id = fbUser.uid;
+      all.push(u);
+      saveUsers(all);
+    }
+    return u;
+  }
+  const s = loadSess();
+  if (!s?.uid) return null;
+  return loadUsers().find(u => u.id === s.uid) || null;
+}
 function save(u) { const all=loadUsers(); const i=all.findIndex(x=>x.id===u.id); if(i>=0) all[i]=u; else all.push(u); saveUsers(all); }
 function addPts(u, n, reason) { const t=todayKey(), y=new Date(); y.setDate(y.getDate()-1); const yk=`${y.getFullYear()}-${String(y.getMonth()+1).padStart(2,"0")}-${String(y.getDate()).padStart(2,"0")}`; u={...u}; u.streak={...u.streak}; if(u.streak.d!==t){ u.streak.n = u.streak.d===yk ? u.streak.n+1 : 1; u.streak.d=t; } u.pts = Math.max(0,(u.pts||0)+n); const a=rLS(LS_ACT,[]); a.push({uid:u.id,t:nowISO(),type:"pts",n,reason}); wLS(LS_ACT,a.slice(-500)); save(u); return u; }
 function addBadge(u,b){ u={...u}; if(!u.badges.includes(b)){ u.badges=[...u.badges,b]; save(u); } return u; }
@@ -319,6 +348,111 @@ function showTip(x, y, html) {
 function hideTip() { hide($("tooltip")); }
 
 // ── Section 7: Dashboard ────────────────────────────────────────
+function buildHeatmapData(userId) {
+  const WEEKS = 26;
+  const totalDays = WEEKS * 7;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayOfWeek = today.getDay();
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (totalDays - 1) - dayOfWeek);
+
+  const acts = rLS(LS_ACT, []).filter(a => a.uid === userId);
+  const dayCounts = {};
+  for (const a of acts) {
+    const d = new Date(a.t);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    dayCounts[key] = (dayCounts[key] || 0) + (a.n || 1);
+  }
+
+  const cells = [];
+  const cur = new Date(startDate);
+  const totalCells = totalDays + dayOfWeek;
+  let totalContribs = 0;
+  let activeDays = 0;
+
+  for (let i = 0; i < totalCells; i++) {
+    const key = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,"0")}-${String(cur.getDate()).padStart(2,"0")}`;
+    const count = dayCounts[key] || 0;
+    const isFuture = cur > today;
+    if (count > 0 && !isFuture) { totalContribs += count; activeDays++; }
+    cells.push({
+      date: new Date(cur),
+      key,
+      count: isFuture ? -1 : count,
+      month: cur.getMonth(),
+      day: cur.getDay(),
+    });
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return { cells, totalContribs, activeDays, startDate, WEEKS };
+}
+
+function levelClass(count) {
+  if (count <= 0) return "";
+  if (count <= 3) return "L1";
+  if (count <= 8) return "L2";
+  if (count <= 15) return "L3";
+  return "L4";
+}
+
+function renderHeatmap(userId) {
+  const { cells, totalContribs, activeDays, startDate, WEEKS } = buildHeatmapData(userId);
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const cellsHtml = cells.map(c => {
+    if (c.count === -1) return `<div class="heatmapCell" style="opacity:.25" title="Future"></div>`;
+    const lv = levelClass(c.count);
+    const label = `${c.count} activity pts on ${MONTHS[c.month]} ${c.date.getDate()}`;
+    return `<div class="heatmapCell ${lv}" title="${label}"></div>`;
+  }).join("");
+
+  const monthLabels = [];
+  let lastMonth = -1;
+  let colIndex = 0;
+  for (let i = 0; i < cells.length; i += 7) {
+    const m = cells[i].month;
+    if (m !== lastMonth) {
+      monthLabels.push({ month: MONTHS[m], col: colIndex });
+      lastMonth = m;
+    }
+    colIndex++;
+  }
+  const totalCols = Math.ceil(cells.length / 7);
+  const colW = 16;
+  const monthsHtml = monthLabels.map((m, i) => {
+    const next = monthLabels[i + 1] ? monthLabels[i + 1].col : totalCols;
+    const span = next - m.col;
+    return `<span style="width:${span * colW}px">${m.month}</span>`;
+  }).join("");
+
+  return `
+    <div class="heatmapWrap">
+      <div class="heatmapHeader">
+        <h3>Activity Map</h3>
+        <div class="heatmapCount"><b>${totalContribs}</b> pts across <b>${activeDays}</b> active days</div>
+      </div>
+      <div class="heatmapScroll">
+        <div class="heatmapGrid" style="grid-template-columns:repeat(${totalCols},13px)">
+          ${cellsHtml}
+        </div>
+      </div>
+      <div class="heatmapFooter">
+        <div class="heatmapMonths">${monthsHtml}</div>
+        <div class="heatmapLegend">
+          Less
+          <div class="heatmapCell" style="cursor:default"></div>
+          <div class="heatmapCell L1" style="cursor:default"></div>
+          <div class="heatmapCell L2" style="cursor:default"></div>
+          <div class="heatmapCell L3" style="cursor:default"></div>
+          <div class="heatmapCell L4" style="cursor:default"></div>
+          More
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderDashboard(user) {
   const root = $("v_dashboard");
   const modsCompleted = Object.keys(user.prog.mods || {}).length;
@@ -338,6 +472,7 @@ function renderDashboard(user) {
       <div class="statCard"><div class="statVal">${topicsDone}/16</div><div class="statLabel">Topics Done</div></div>
       <div class="statCard"><div class="statVal">${user.badges?.length || 0}</div><div class="statLabel">Badges</div></div>
     </div>
+    ${renderHeatmap(user.id)}
     ${nextTopic ? `
     <div class="resumeCard" id="resumeCard">
       <div style="display:flex;align-items:center;gap:12px">
@@ -460,10 +595,6 @@ function openTopic(topicId) {
 }
 
 function openLesson(topicId, subtopicId) {
-  if (VISUALIZER_MAP[subtopicId]) {
-    goView(VISUALIZER_MAP[subtopicId]);
-    return;
-  }
   curView = "lesson";
   document.querySelectorAll(".view").forEach(v => hide(v));
   show($("v_lesson"));
@@ -479,7 +610,7 @@ const LESSON_CONTENT = {
   linreg_1: `
     <div class="concept">
       <h3>What is Regression?</h3>
-      <p><b>Analogy:</b> Imagine you're a real estate agent who has seen thousands of house sales. When someone asks you "How much is my 1500 sq ft house worth?", you mentally draw a trend from your experience. That mental trend is regression.</p>
+      <p><b>Analogy:</b> Imagine you're a real estate agent who has seen thousands of house sales. When someone asks "How much is my 1500 sq ft house worth?", you mentally draw a trend from your experience. That mental trend is regression.</p>
       <p>Regression predicts a <b>continuous number</b> — not a category, but a value on a number line. The price of a house, tomorrow's temperature, or how many minutes a delivery will take.</p>
     </div>
     <div class="formula">y = f(x) + ε<br><span class="sub">Output = Function of input + Random noise</span></div>
@@ -2206,7 +2337,7 @@ function renderFallbackQuiz(user, root) {
   });
 }
 
-// ── Section 13: Playground ──────────────────────────────────────
+// ── Section 13: Playground (Enhanced — 4 modes) ─────────────────
 function runMini(code) {
   const out = [], vars = new Map();
   const lines = String(code).split("\n").map(l => l.trim()).filter(l => l && !l.startsWith("#"));
@@ -2228,12 +2359,185 @@ function runMini(code) {
   return out.join("\n");
 }
 
+// ── BUG FIX CHALLENGES ──
+const BUG_CHALLENGES = [
+  { id:"bug1", title:"Broken Average", difficulty:1,
+    desc:"This code should compute the average of 3 numbers, but the result is wrong.",
+    buggy:   ["a = 10","b = 20","c = 30","total = a + b + c","average = total / 2","print(average)"],
+    errorLines:[4],
+    fixed:   ["a = 10","b = 20","c = 30","total = a + b + c","average = total / 3","print(average)"],
+    hint:"How many numbers are we averaging? Is the divisor correct?",
+    expected:"20" },
+  { id:"bug2", title:"Off-by-one Factorial", difficulty:1,
+    desc:"This should print 5! = 120, but it prints something else.",
+    buggy:   ["result = 1","i = 0","result = result * 1","result = result * 2","result = result * 3","result = result * 4","print(result)"],
+    errorLines:[6],
+    fixed:   ["result = 1","i = 0","result = result * 1","result = result * 2","result = result * 3","result = result * 4","result = result * 5","print(result)"],
+    hint:"5! means 1×2×3×4×5. Are we multiplying by 5?",
+    expected:"120" },
+  { id:"bug3", title:"Wrong Comparison", difficulty:1,
+    desc:"Should print the bigger of two numbers. It prints the wrong one.",
+    buggy:   ["x = 15","y = 42","bigger = x","print(bigger)"],
+    errorLines:[2],
+    fixed:   ["x = 15","y = 42","bigger = y","print(bigger)"],
+    hint:"Which variable is actually larger: x or y?",
+    expected:"42" },
+  { id:"bug4", title:"Celsius Conversion", difficulty:2,
+    desc:"Convert 100°C to Fahrenheit (should be 212). The formula is wrong.",
+    buggy:   ["celsius = 100","fahrenheit = celsius * 9 / 5","print(fahrenheit)"],
+    errorLines:[1],
+    fixed:   ["celsius = 100","fahrenheit = celsius * 9 / 5 + 32","print(fahrenheit)"],
+    hint:"The formula is F = C × 9/5 + 32. What's missing?",
+    expected:"212" },
+  { id:"bug5", title:"Area Calculation", difficulty:2,
+    desc:"Calculate the area of a rectangle 7×5. Should print 35.",
+    buggy:   ["width = 7","height = 5","area = width + height","print(area)"],
+    errorLines:[2],
+    fixed:   ["width = 7","height = 5","area = width * height","print(area)"],
+    hint:"Area = width × height, not width + height.",
+    expected:"35" },
+  { id:"bug6", title:"Percentage Score", difficulty:2,
+    desc:"Student got 45 out of 50. Should print 90 (percent). It prints wrong.",
+    buggy:   ["scored = 45","total = 50","pct = scored / total * 10","print(pct)"],
+    errorLines:[2],
+    fixed:   ["scored = 45","total = 50","pct = scored / total * 100","print(pct)"],
+    hint:"To get a percentage, multiply by 100, not 10.",
+    expected:"90" },
+  { id:"bug7", title:"Swap Fail", difficulty:2,
+    desc:"Should swap a and b, then print b (originally 10). Prints wrong value.",
+    buggy:   ["a = 10","b = 20","a = b","b = a","print(b)"],
+    errorLines:[2,3],
+    fixed:   ["a = 10","b = 20","temp = a","a = b","b = temp","print(b)"],
+    hint:"When you set a = b, the old value of a is lost. You need a temporary variable.",
+    expected:"10" },
+  { id:"bug8", title:"Discount Price", difficulty:3,
+    desc:"Apply 20% discount to $80. Final price should be 64.",
+    buggy:   ["price = 80","discount = 20","final = price - discount","print(final)"],
+    errorLines:[2],
+    fixed:   ["price = 80","discount = price * 20 / 100","final = price - discount","print(final)"],
+    hint:"20% of 80 is not 20. You need to calculate the percentage of the price.",
+    expected:"64" },
+  { id:"bug9", title:"Power Calc", difficulty:3,
+    desc:"Calculate 2^8 = 256. This code gets it wrong.",
+    buggy:   ["base = 2","result = base * base * base * base * base * base * base","print(result)"],
+    errorLines:[1],
+    fixed:   ["base = 2","result = base * base * base * base * base * base * base * base","print(result)"],
+    hint:"2^8 means multiplying 2 eight times. Count the multiplications.",
+    expected:"256" },
+  { id:"bug10", title:"Speed Calculation", difficulty:3,
+    desc:"Car travels 150 km in 2.5 hours. Speed should be 60 km/h.",
+    buggy:   ["distance = 150","time = 2.5","speed = distance * time","print(speed)"],
+    errorLines:[2],
+    fixed:   ["distance = 150","time = 2.5","speed = distance / time","print(speed)"],
+    hint:"Speed = distance / time, not distance × time.",
+    expected:"60" },
+];
+
+// ── FILL-THE-BLANKS CHALLENGES ──
+const BLANK_CHALLENGES = [
+  { id:"bl1", title:"Sum Two Numbers", difficulty:1,
+    desc:"Complete the code to add two numbers and print the result.",
+    template:"a = 5\nb = 3\nresult = a {{0}} b\nprint(result)",
+    blanks:["+"], expected:"8" },
+  { id:"bl2", title:"Circle Area", difficulty:1,
+    desc:"Calculate area of a circle with radius 7. Use pi ≈ 3.14.",
+    template:"radius = 7\npi = 3.14\narea = pi {{0}} radius * radius\nprint(area)",
+    blanks:["*"], expected:"153.86" },
+  { id:"bl3", title:"Remainder", difficulty:1,
+    desc:"Find the remainder when 17 is divided by 5. Should print 2.",
+    template:"a = 17\nb = 5\nresult = a {{0}} b\nprint(result)",
+    blanks:["%"], expected:"2" },
+  { id:"bl4", title:"Rectangle Perimeter", difficulty:2,
+    desc:"Calculate the perimeter of a rectangle 8×3. Should print 22.",
+    template:"length = 8\nwidth = 3\nperimeter = {{0}} * (length + width)\nprint(perimeter)",
+    blanks:["2"], expected:"22" },
+  { id:"bl5", title:"Fahrenheit to Celsius", difficulty:2,
+    desc:"Convert 212°F to Celsius. Should print 100.",
+    template:"f = 212\nc = (f - {{0}}) * 5 / 9\nprint(c)",
+    blanks:["32"], expected:"100" },
+  { id:"bl6", title:"Simple Interest", difficulty:2,
+    desc:"Principal=1000, rate=5%, time=2 years. SI should be 100.",
+    template:"p = 1000\nr = 5\nt = 2\nsi = p * r * t / {{0}}\nprint(si)",
+    blanks:["100"], expected:"100" },
+  { id:"bl7", title:"Average of Four", difficulty:2,
+    desc:"Calculate average of 10, 20, 30, 40. Should print 25.",
+    template:"total = 10 + 20 + 30 + 40\naverage = total / {{0}}\nprint(average)",
+    blanks:["4"], expected:"25" },
+  { id:"bl8", title:"Hypotenuse", difficulty:3,
+    desc:"Right triangle with sides 3 and 4. Hypotenuse squared should be 25.",
+    template:"a = 3\nb = 4\nh_sq = a {{0}} a + b * b\nprint(h_sq)",
+    blanks:["*"], expected:"25" },
+  { id:"bl9", title:"BMI Calculator", difficulty:3,
+    desc:"Weight=70 kg, height=1.75 m. BMI ≈ 22.86 (print weight/(height^2)).",
+    template:"weight = 70\nheight = 1.75\nbmi = weight / (height {{0}} height)\nprint(bmi)",
+    blanks:["*"], expected:"22.857142857142858" },
+  { id:"bl10", title:"Compound Expression", difficulty:3,
+    desc:"Evaluate: (8 + 2) × (6 − 1) = 50",
+    template:"a = 8 + 2\nb = 6 {{0}} 1\nresult = a * b\nprint(result)",
+    blanks:["-"], expected:"50" },
+];
+
+// ── CODING CHALLENGES ──
+const CODE_CHALLENGES = [
+  { id:"ch1", title:"Double It", difficulty:1,
+    desc:"Create a variable x with value 7, double it, and print the result.",
+    expected:"14", hint:"x = 7, then multiply by 2, then print." },
+  { id:"ch2", title:"Sum 1 to 5", difficulty:1,
+    desc:"Calculate the sum of 1 + 2 + 3 + 4 + 5 and print it.",
+    expected:"15", hint:"Just add them all: s = 1 + 2 + 3 + 4 + 5" },
+  { id:"ch3", title:"Square a Number", difficulty:1,
+    desc:"Set n = 9, compute n squared, and print the result.",
+    expected:"81", hint:"Square means n * n." },
+  { id:"ch4", title:"Swap and Print", difficulty:2,
+    desc:"Set a = 5, b = 10. Swap them using a temp variable. Print a (should be 10).",
+    expected:"10", hint:"Use temp = a, then a = b, then b = temp." },
+  { id:"ch5", title:"Max of Three", difficulty:2,
+    desc:"Given x=12, y=45, z=30. Print the largest value.",
+    expected:"45", hint:"Think about which variable has the biggest number." },
+  { id:"ch6", title:"Even or Odd Check", difficulty:2,
+    desc:"Set n = 17. Print n % 2 (0 = even, 1 = odd).",
+    expected:"1", hint:"The modulo operator % gives the remainder." },
+  { id:"ch7", title:"Triangle Area", difficulty:2,
+    desc:"Base = 10, height = 6. Print the area (0.5 × base × height).",
+    expected:"30", hint:"area = 0.5 * base * height" },
+  { id:"ch8", title:"Convert Minutes", difficulty:3,
+    desc:"Given 135 minutes, print how many full hours that is (integer).",
+    expected:"2", hint:"Divide by 60. Remember, 135/60 = 2.25, we want just the integer part. Use (135 - 135 % 60) / 60." },
+  { id:"ch9", title:"Distance Formula Part", difficulty:3,
+    desc:"Points: (3,0) and (0,4). Print dx² + dy² (should be 25).",
+    expected:"25", hint:"dx = 3-0 = 3, dy = 0-4 = -4. dx*dx + dy*dy = 9+16 = 25" },
+  { id:"ch10", title:"Digit Sum", difficulty:3,
+    desc:"Number = 123. Print the sum of its digits (1+2+3=6). Use division and modulo.",
+    expected:"6", hint:"d1 = 123 % 10 (=3), then 123 - 3 = 120, 120/10=12, d2 = 12 % 10 (=2), etc." },
+];
+
+let pgMode = "free";
+
 function renderPlayground(user) {
   const root = $("v_playground");
   root.innerHTML = `
-    <h2>Coding Playground</h2>
-    <p class="sub">Write code, run it, and get AI-powered code review from Gemini.</p>
-    <div class="g2" style="margin-top:12px">
+    <h2 style="margin:0 0 4px">Coding Playground</h2>
+    <div class="sub" style="margin-bottom:16px">Write code, fix bugs, fill blanks, and solve challenges. Earn points for every correct answer!</div>
+    <div class="pgTabs">
+      <button class="pgTab ${pgMode==="free"?"active":""}" data-m="free"><span class="pgTabIcon">💻</span>Free Code</button>
+      <button class="pgTab ${pgMode==="bugfix"?"active":""}" data-m="bugfix"><span class="pgTabIcon">🐛</span>Bug Fix</button>
+      <button class="pgTab ${pgMode==="blanks"?"active":""}" data-m="blanks"><span class="pgTabIcon">✏️</span>Fill Blanks</button>
+      <button class="pgTab ${pgMode==="challenge"?"active":""}" data-m="challenge"><span class="pgTabIcon">🏆</span>Challenges</button>
+    </div>
+    <div id="pgContent"></div>
+  `;
+  root.querySelectorAll(".pgTab").forEach(t => {
+    t.addEventListener("click", () => { pgMode = t.dataset.m; renderPlayground(user); });
+  });
+  const pgMap = { free: pgFreeMode, bugfix: pgBugFixMode, blanks: pgBlanksMode, challenge: pgChallengeMode };
+  pgMap[pgMode](user);
+}
+
+// ── MODE 1: FREE CODE ──
+function pgFreeMode(user) {
+  const area = $("pgContent");
+  area.innerHTML = `
+    <div class="g2">
       <div class="panel">
         <div class="panelTitle">Code</div>
         <textarea id="pgCode" class="codeArea" spellcheck="false"># Try it!\nx = 5\ny = x * 3 + 1\nprint(y)\nprint("Hello AIML!")</textarea>
@@ -2260,11 +2564,226 @@ function renderPlayground(user) {
   });
   $("pgReview").addEventListener("click", async () => {
     const code = $("pgCode").value.trim(); if (!code) return;
-    show($("pgReviewBox")); $("pgReviewText").textContent = "Gemini is reviewing your code...";
+    show($("pgReviewBox")); $("pgReviewText").textContent = "Gemini is reviewing...";
     const review = await reviewCode(code);
-    $("pgReviewText").textContent = review || "Could not get a review right now.";
+    $("pgReviewText").textContent = review || "Could not review right now.";
     let u = me(); if (u) { u = addPts(u, 3, "ai_review"); save(u); updateChip(); }
   });
+}
+
+// ── MODE 2: BUG FIX ──
+let bugIdx = 0;
+function pgBugFixMode(user) {
+  const ch = BUG_CHALLENGES[bugIdx];
+  const area = $("pgContent");
+  const dots = Array.from({length: ch.difficulty}, () => '<div class="dot fill"></div>').join("") +
+               Array.from({length: 3 - ch.difficulty}, () => '<div class="dot"></div>').join("");
+  area.innerHTML = `
+    <div class="pgModeHeader">
+      <h3>🐛 ${esc(ch.title)}</h3>
+      <div class="pgDifficulty">${dots}</div>
+    </div>
+    <div class="sub" style="margin-bottom:12px">${esc(ch.desc)}</div>
+    <div class="panel" style="margin-bottom:12px">
+      <div class="panelTitle">Buggy Code — Edit to fix it</div>
+      <textarea id="bugEditor" class="codeArea" spellcheck="false">${ch.buggy.join("\n")}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="bugCheck" class="btn primary sm">Check Fix (+15 pts)</button>
+      <button id="bugHint" class="btn ghost sm">💡 Hint</button>
+      <button id="bugShowAnswer" class="btn ghost sm">Show Answer</button>
+    </div>
+    <div id="bugResult"></div>
+    <div class="pgNav">
+      <div class="pgCounter">${bugIdx + 1} / ${BUG_CHALLENGES.length}</div>
+      <div style="display:flex;gap:8px">
+        <button id="bugPrev" class="btn ghost sm" ${bugIdx===0?"disabled":""}>← Prev</button>
+        <button id="bugNext" class="btn ghost sm" ${bugIdx>=BUG_CHALLENGES.length-1?"disabled":""}>Next →</button>
+      </div>
+    </div>
+  `;
+
+  $("bugCheck").addEventListener("click", () => {
+    const userCode = $("bugEditor").value.trim();
+    let output;
+    try { output = runMini(userCode); } catch(e) { output = "ERROR"; }
+    const pass = output.trim() === ch.expected.trim();
+    $("bugResult").innerHTML = pass
+      ? `<div class="pgResult pass">✅ Correct! The output is ${esc(ch.expected)}. Bug squashed!</div>`
+      : `<div class="pgResult fail">❌ Expected output: <b>${esc(ch.expected)}</b>, but got: <b>${esc(output)}</b>. Try again!</div>`;
+    if (pass) { let u = me(); if (u) { addPts(u, 15, "bugfix_" + ch.id); updateChip(); } }
+  });
+
+  $("bugHint").addEventListener("click", () => {
+    $("bugResult").innerHTML = `<div class="pgResult" style="background:var(--coral-soft);color:var(--coral)">💡 ${esc(ch.hint)}</div>`;
+  });
+
+  $("bugShowAnswer").addEventListener("click", () => {
+    $("bugEditor").value = ch.fixed.join("\n");
+    $("bugResult").innerHTML = `<div class="pgResult" style="background:var(--coral-soft);color:var(--sub)">Answer revealed. Try the next one to earn points!</div>`;
+  });
+
+  $("bugPrev").addEventListener("click", () => { if (bugIdx > 0) { bugIdx--; pgBugFixMode(user); } });
+  $("bugNext").addEventListener("click", () => { if (bugIdx < BUG_CHALLENGES.length - 1) { bugIdx++; pgBugFixMode(user); } });
+}
+
+// ── MODE 3: FILL THE BLANKS ──
+let blankIdx = 0;
+function pgBlanksMode(user) {
+  const ch = BLANK_CHALLENGES[blankIdx];
+  const area = $("pgContent");
+  const dots = Array.from({length: ch.difficulty}, () => '<div class="dot fill"></div>').join("") +
+               Array.from({length: 3 - ch.difficulty}, () => '<div class="dot"></div>').join("");
+
+  let displayCode = ch.template;
+  const blankInputs = [];
+  ch.blanks.forEach((ans, i) => {
+    const placeholder = `{{${i}}}`;
+    const inputHtml = `<input type="text" class="blankSlot" id="blank_${i}" data-idx="${i}" autocomplete="off" placeholder="___" style="width:${Math.max(40, ans.length * 14)}px">`;
+    displayCode = displayCode.replace(placeholder, inputHtml);
+  });
+
+  const codeLines = displayCode.split("\n").map((line, i) =>
+    `<div class="bugLine"><div class="bugLineNum">${i+1}</div><div class="bugLineCode">${line}</div></div>`
+  ).join("");
+
+  area.innerHTML = `
+    <div class="pgModeHeader">
+      <h3>✏️ ${esc(ch.title)}</h3>
+      <div class="pgDifficulty">${dots}</div>
+    </div>
+    <div class="sub" style="margin-bottom:12px">${esc(ch.desc)}</div>
+    <div class="panel" style="margin-bottom:12px">
+      <div class="panelTitle">Fill in the blanks to make the code work</div>
+      <div style="padding:14px;background:var(--dark);border-radius:12px;color:var(--dark-text)">
+        ${codeLines}
+      </div>
+      <div class="sub" style="margin-top:8px">Expected output: <code style="background:var(--inset);padding:2px 8px;border-radius:6px">${esc(ch.expected)}</code></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="blankCheck" class="btn primary sm">Check Answer (+20 pts)</button>
+      <button id="blankReveal" class="btn ghost sm">Show Answer</button>
+    </div>
+    <div id="blankResult"></div>
+    <div class="pgNav">
+      <div class="pgCounter">${blankIdx + 1} / ${BLANK_CHALLENGES.length}</div>
+      <div style="display:flex;gap:8px">
+        <button id="blankPrev" class="btn ghost sm" ${blankIdx===0?"disabled":""}>← Prev</button>
+        <button id="blankNext" class="btn ghost sm" ${blankIdx>=BLANK_CHALLENGES.length-1?"disabled":""}>Next →</button>
+      </div>
+    </div>
+  `;
+
+  $("blankCheck").addEventListener("click", () => {
+    let allCorrect = true;
+    ch.blanks.forEach((ans, i) => {
+      const input = $(`blank_${i}`);
+      const val = input.value.trim();
+      if (val === ans) {
+        input.classList.add("correct"); input.classList.remove("wrong");
+      } else {
+        input.classList.add("wrong"); input.classList.remove("correct");
+        allCorrect = false;
+      }
+    });
+
+    let code = ch.template;
+    ch.blanks.forEach((_, i) => { code = code.replace(`{{${i}}}`, $(`blank_${i}`).value.trim()); });
+    let output;
+    try { output = runMini(code); } catch(e) { output = "ERROR"; }
+    const outMatch = output.trim() === ch.expected.trim();
+
+    if (allCorrect && outMatch) {
+      $("blankResult").innerHTML = `<div class="pgResult pass">✅ Perfect! All blanks correct. Output: ${esc(ch.expected)}</div>`;
+      let u = me(); if (u) { addPts(u, 20, "blanks_" + ch.id); updateChip(); }
+    } else if (outMatch) {
+      $("blankResult").innerHTML = `<div class="pgResult pass">✅ Output is correct! There might be an alternative solution. +20 pts</div>`;
+      let u = me(); if (u) { addPts(u, 20, "blanks_" + ch.id); updateChip(); }
+    } else {
+      $("blankResult").innerHTML = `<div class="pgResult fail">❌ Output: <b>${esc(output)}</b> — expected: <b>${esc(ch.expected)}</b>. Check the blanks!</div>`;
+    }
+  });
+
+  $("blankReveal").addEventListener("click", () => {
+    ch.blanks.forEach((ans, i) => {
+      const input = $(`blank_${i}`); input.value = ans;
+      input.classList.add("correct"); input.classList.remove("wrong");
+    });
+    $("blankResult").innerHTML = `<div class="pgResult" style="background:var(--coral-soft);color:var(--sub)">Answers revealed. Try the next one!</div>`;
+  });
+
+  $("blankPrev").addEventListener("click", () => { if (blankIdx > 0) { blankIdx--; pgBlanksMode(user); } });
+  $("blankNext").addEventListener("click", () => { if (blankIdx < BLANK_CHALLENGES.length - 1) { blankIdx++; pgBlanksMode(user); } });
+}
+
+// ── MODE 4: CODING CHALLENGES ──
+let chIdx = 0;
+function pgChallengeMode(user) {
+  const ch = CODE_CHALLENGES[chIdx];
+  const area = $("pgContent");
+  const dots = Array.from({length: ch.difficulty}, () => '<div class="dot fill"></div>').join("") +
+               Array.from({length: 3 - ch.difficulty}, () => '<div class="dot"></div>').join("");
+
+  area.innerHTML = `
+    <div class="pgModeHeader">
+      <h3>🏆 ${esc(ch.title)}</h3>
+      <div class="pgDifficulty">${dots}</div>
+    </div>
+    <div class="challengePrompt">
+      <h4>Challenge</h4>
+      <div>${esc(ch.desc)}</div>
+      <div class="challengeExpected">Expected output: ${esc(ch.expected)}</div>
+    </div>
+    <div class="panel">
+      <div class="panelTitle">Your Solution</div>
+      <textarea id="chCode" class="codeArea" spellcheck="false" placeholder="# Write your code here\n"># Write your solution here\n</textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="chRun" class="btn primary sm">Submit (+25 pts)</button>
+        <button id="chHint" class="btn ghost sm">💡 Hint</button>
+        <button id="chTest" class="btn ghost sm">Test Run</button>
+      </div>
+    </div>
+    <div id="chResult"></div>
+    <div class="pgNav">
+      <div class="pgCounter">${chIdx + 1} / ${CODE_CHALLENGES.length}</div>
+      <div style="display:flex;gap:8px">
+        <button id="chPrev" class="btn ghost sm" ${chIdx===0?"disabled":""}>← Prev</button>
+        <button id="chNext" class="btn ghost sm" ${chIdx>=CODE_CHALLENGES.length-1?"disabled":""}>Next →</button>
+      </div>
+    </div>
+  `;
+
+  $("chTest").addEventListener("click", () => {
+    const code = $("chCode").value.trim();
+    if (!code) return;
+    let output;
+    try { output = runMini(code); } catch(e) { output = "Error: " + (e?.message || e); }
+    $("chResult").innerHTML = `<div class="pgResult" style="background:var(--inset);color:var(--text)">Output: <code>${esc(output)}</code></div>`;
+  });
+
+  $("chRun").addEventListener("click", () => {
+    const code = $("chCode").value.trim();
+    if (!code || code === "# Write your solution here") {
+      $("chResult").innerHTML = `<div class="pgResult fail">Write some code first!</div>`;
+      return;
+    }
+    let output;
+    try { output = runMini(code); } catch(e) { output = "ERROR: " + (e?.message || e); }
+    const pass = output.trim() === ch.expected.trim();
+    if (pass) {
+      $("chResult").innerHTML = `<div class="pgResult pass">✅ Challenge solved! Output: ${esc(ch.expected)} — well done!</div>`;
+      let u = me(); if (u) { addPts(u, 25, "challenge_" + ch.id); addBadge(u, "coder"); updateChip(); }
+    } else {
+      $("chResult").innerHTML = `<div class="pgResult fail">❌ Output: <b>${esc(output)}</b> — expected: <b>${esc(ch.expected)}</b>. Keep trying!</div>`;
+    }
+  });
+
+  $("chHint").addEventListener("click", () => {
+    $("chResult").innerHTML = `<div class="pgResult" style="background:var(--coral-soft);color:var(--coral)">💡 ${esc(ch.hint)}</div>`;
+  });
+
+  $("chPrev").addEventListener("click", () => { if (chIdx > 0) { chIdx--; pgChallengeMode(user); } });
+  $("chNext").addEventListener("click", () => { if (chIdx < CODE_CHALLENGES.length - 1) { chIdx++; pgChallengeMode(user); } });
 }
 
 // ── Section 13.5: Simulation (Spam Detector) ────────────────────
@@ -2351,13 +2870,13 @@ function startSpamSim(user) {
       <div class="g2" style="gap:12px;margin-top:12px">
         <div class="panel">
           <div class="panelTitle">Email ${currentIdx + 1}/${spamExamples.length}</div>
-          <div style="padding:12px;background:rgba(42,42,60,.5);border-radius:10px;margin:8px 0">
-            <div style="font-size:14px;line-height:1.6;word-break:break-word">"${esc(email.text)}"</div>
+          <div style="padding:12px;background:var(--canvas);border-radius:10px;margin:8px 0;box-shadow:var(--neo-sm-in)">
+            <div style="font-size:14px;line-height:1.6;word-break:break-word;color:var(--text)">"${esc(email.text)}"</div>
           </div>
           <div style="font-size:12px;color:var(--sub);margin-top:8px"><b>Keywords:</b> ${email.keywords.join(", ") || "None obvious"}</div>
           <div style="display:flex;gap:8px;margin-top:12px">
             <button id="hamBtn" class="btn primary">✓ Ham (Legitimate)</button>
-            <button id="spamBtn" class="btn danger" style="background:rgba(255,107,107,.3);color:#fff">✗ Spam</button>
+            <button id="spamBtn" class="btn danger">✗ Spam</button>
           </div>
           <div id="simFeedback" class="sub hidden" style="margin-top:10px;padding:10px;border-radius:8px"></div>
         </div>
@@ -2366,24 +2885,24 @@ function startSpamSim(user) {
           <div class="sliderRow" style="display:flex;flex-direction:column;gap:12px;margin-top:8px">
             <div>
               <label style="display:block;margin-bottom:4px">Accuracy: <b>${(m.accuracy*100|0)}%</b></div>
-              <div style="height:8px;background:rgba(42,42,60,.7);border-radius:4px;overflow:hidden">
-                <div style="height:100%;width:${m.accuracy*100}%;background:rgba(107,255,184,.8);transition:width 0.3s"></div>
+              <div style="height:8px;background:var(--inset);border-radius:4px;overflow:hidden;box-shadow:var(--neo-sm-in)">
+                <div style="height:100%;width:${m.accuracy*100}%;background:var(--success);transition:width 0.3s"></div>
               </div>
             </div>
             <div>
               <label style="display:block;margin-bottom:4px">Precision: <b>${(m.precision*100|0)}%</b></label>
-              <div style="height:8px;background:rgba(42,42,60,.7);border-radius:4px;overflow:hidden">
-                <div style="height:100%;width:${m.precision*100}%;background:rgba(224,122,95,.8);transition:width 0.3s"></div>
+              <div style="height:8px;background:var(--inset);border-radius:4px;overflow:hidden;box-shadow:var(--neo-sm-in)">
+                <div style="height:100%;width:${m.precision*100}%;background:var(--coral);transition:width 0.3s"></div>
               </div>
             </div>
             <div>
               <label style="display:block;margin-bottom:4px">Recall: <b>${(m.recall*100|0)}%</b></label>
-              <div style="height:8px;background:rgba(42,42,60,.7);border-radius:4px;overflow:hidden">
-                <div style="height:100%;width:${m.recall*100}%;background:rgba(255,107,107,.8);transition:width 0.3s"></div>
+              <div style="height:8px;background:var(--inset);border-radius:4px;overflow:hidden;box-shadow:var(--neo-sm-in)">
+                <div style="height:100%;width:${m.recall*100}%;background:var(--danger);transition:width 0.3s"></div>
               </div>
             </div>
           </div>
-          <div class="sub" style="margin-top:12px;padding:10px;background:rgba(42,42,60,.5);border-radius:8px;font-size:12px">
+          <div class="sub" style="margin-top:12px;padding:10px;background:var(--canvas);border-radius:8px;font-size:12px;box-shadow:var(--neo-sm-in)">
             <b>Tip:</b> Spam has urgent words like "FREE", "NOW", "WINNER". Legitimate emails discuss work/accounts.
           </div>
         </div>
@@ -2462,6 +2981,20 @@ function enterApp() {
   showApp();
 }
 
+function firebaseErrorMsg(code) {
+  const map = {
+    "auth/email-already-in-use": "An account with this email already exists.",
+    "auth/invalid-email": "Please enter a valid email address.",
+    "auth/user-not-found": "No account found. Register first.",
+    "auth/wrong-password": "Incorrect password.",
+    "auth/weak-password": "Password should be at least 6 characters.",
+    "auth/too-many-requests": "Too many attempts. Please try again later.",
+    "auth/invalid-credential": "Invalid email or password.",
+    "auth/network-request-failed": "Network error. Check your connection.",
+  };
+  return map[code] || "Authentication failed. Please try again.";
+}
+
 function boot() {
   const lc = $("logoCanvas");
   if (lc) {
@@ -2477,29 +3010,47 @@ function boot() {
 
   $("authForm").addEventListener("submit", async e => {
     e.preventDefault();
+    const errBox = $("authErr");
+    hide(errBox);
     const email = $("inEmail").value.trim().toLowerCase();
     const pw = $("inPw").value;
+    const btn = $("authBtn");
+    btn.disabled = true;
+    btn.textContent = authMode === "register" ? "Creating account…" : "Logging in…";
     try {
-      if (!email.includes("@")) throw new Error("Valid email required.");
-      if (pw.length < 4) throw new Error("Password too short.");
-      const h = await sha256(pw);
-      const users = loadUsers();
-      const ex = users.find(u => u.email === email);
       if (authMode === "register") {
-        if (ex) throw new Error("Account exists.");
-        const u = freshUser(email); u.pw = h; users.push(u); saveUsers(users);
-        saveSess({ uid: u.id }); enterApp();
+        await fbAuth.createUserWithEmailAndPassword(email, pw);
       } else {
-        if (!ex) throw new Error("No account. Register first.");
-        if (ex.pw !== h) throw new Error("Wrong password.");
-        saveSess({ uid: ex.id }); enterApp();
+        await fbAuth.signInWithEmailAndPassword(email, pw);
       }
     } catch (err) {
-      const e2 = $("authErr"); e2.textContent = err.message; show(e2);
+      errBox.textContent = firebaseErrorMsg(err.code);
+      show(errBox);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = authMode === "register" ? "Create account" : "Login";
     }
   });
 
-  $("btnLogout").addEventListener("click", () => { clearSess(); showAuth(); });
+  $("btnGoogle").addEventListener("click", async () => {
+    const errBox = $("authErr");
+    hide(errBox);
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await fbAuth.signInWithPopup(provider);
+    } catch (err) {
+      if (err.code !== "auth/popup-closed-by-user") {
+        errBox.textContent = firebaseErrorMsg(err.code);
+        show(errBox);
+      }
+    }
+  });
+
+  $("btnLogout").addEventListener("click", () => {
+    fbAuth.signOut();
+    clearSess();
+    showAuth();
+  });
 
   $("btnDemo").addEventListener("click", async () => {
     const users = loadUsers();
@@ -2519,7 +3070,22 @@ function boot() {
     b.addEventListener("click", () => goView(b.dataset.r));
   });
 
-  if (me()) enterApp(); else showAuth();
+  fbAuth.onAuthStateChanged(user => {
+    if (user) {
+      const all = loadUsers();
+      let u = all.find(x => x.email === user.email);
+      if (!u) {
+        u = freshUser(user.email);
+        u.id = user.uid;
+        all.push(u);
+        saveUsers(all);
+      }
+      saveSess({ uid: u.id });
+      enterApp();
+    } else {
+      if (!loadSess()?.uid) showAuth();
+    }
+  });
 }
 
 // ── AI Tutor Chatbot UI ─────────────────────────────────────────
