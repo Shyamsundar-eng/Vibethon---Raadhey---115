@@ -400,27 +400,47 @@ canvas { display: block; }
   font-weight: 800;
   margin: 0 0 10px;
 }
-.lbChart{ display:grid; gap:10px; }
-.lbRow{
-  display:grid;
-  grid-template-columns: 44px minmax(140px, 1fr) 1.2fr 70px;
+.lbHeader{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+.lbList{ display:grid; gap:10px; }
+.lbCard{
+  display:flex;
   align-items:center;
-  gap:10px;
+  justify-content:space-between;
+  gap:12px;
+  padding: 12px 12px;
+  border-radius: 16px;
+  background: var(--raised);
+  box-shadow: var(--neo-sm);
+  border: 1px solid rgba(0,0,0,.04);
 }
-.lbRank{
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--sub);
+.lbCard.me{
+  background: linear-gradient(180deg, rgba(224,122,95,.10), rgba(107,158,158,.10));
+  border: 1px solid rgba(224,122,95,.22);
 }
+.lbLeft{ display:flex; align-items:center; gap:12px; min-width: 0; flex:1; }
+.lbAvatar{
+  width: 40px; height: 40px;
+  border-radius: 14px;
+  display:grid; place-items:center;
+  font-family: var(--head);
+  font-weight: 800;
+  color: rgba(0,0,0,.72);
+  background: linear-gradient(135deg, rgba(224,122,95,.22), rgba(107,158,158,.22));
+  box-shadow: var(--neo-sm-in);
+  flex: 0 0 auto;
+}
+.lbMeta{ min-width:0; flex:1; display:grid; gap:6px; }
+.lbNameRow{ display:flex; align-items:center; gap:8px; min-width:0; }
 .lbName{
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.lbCrown{ font-size: 14px; opacity: .9; flex: 0 0 auto; }
 .lbBarWrap{
-  height: 12px;
+  height: 10px;
   border-radius: 999px;
   background: rgba(0,0,0,.06);
   box-shadow: var(--neo-sm-in);
@@ -431,16 +451,30 @@ canvas { display: block; }
   border-radius: 999px;
   background: linear-gradient(90deg, var(--coral), var(--teal));
 }
+.lbRight{ display:flex; align-items:center; gap:12px; flex: 0 0 auto; }
+.lbRankPill{
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--sub);
+  background: var(--canvas);
+  border-radius: 999px;
+  padding: 6px 10px;
+  box-shadow: var(--neo-sm-in);
+}
 .lbVal{
   text-align:right;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--text);
+  min-width: 56px;
 }
 
 @media (max-width: 720px){
-  .lbRow{ grid-template-columns: 38px minmax(110px, 1fr) 1fr 56px; }
-  .lbBarWrap{ height: 10px; }
+  .lbCard{ padding: 12px 10px; }
+  .lbAvatar{ width: 36px; height: 36px; border-radius: 12px; }
+  .lbRight{ gap:10px; }
+  .lbVal{ min-width: 46px; }
 }
 
 /* ── STEP INDICATOR ────────────────────────────────────────── */
