@@ -36,9 +36,8 @@ function todayKey() { const d = new Date(); return `${d.getFullYear()}-${String(
 async function sha256(s) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join(""); }
 
 // ── Section 2: Gemini AI Core ───────────────────────────────────
-// Calls go through our tiny backend endpoint `/api/gemini`
-// so the Gemini key is never shipped to the browser.
-const GEMINI_MODELS = ["gemini-2.0-flash-lite","gemini-2.0-flash","gemini-1.5-flash"];
+// Gemini calls are proxied through the local server (see `server/server.js`)
+// so the API key never ships to the browser.
 const _geminiQueue = [];
 let _geminiRunning = false;
 const GEMINI_MIN_GAP = 4200;
@@ -46,180 +45,30 @@ let _lastGeminiCall = 0;
 function _enqueue(fn) { return new Promise((resolve, reject) => { _geminiQueue.push({ fn, resolve, reject }); _drainQueue(); }); }
 async function _drainQueue() { if (_geminiRunning || _geminiQueue.length === 0) return; _geminiRunning = true; const { fn, resolve, reject } = _geminiQueue.shift(); const wait = GEMINI_MIN_GAP - (Date.now() - _lastGeminiCall); if (wait > 0) await new Promise(r => setTimeout(r, wait)); try { resolve(await fn()); } catch (e) { reject(e); } _lastGeminiCall = Date.now(); _geminiRunning = false; _drainQueue(); }
 async function _rawGeminiCall(prompt, maxTokens) {
-  let lastErr = null;
-  for (const model of GEMINI_MODELS) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        const res = await fetch("/api/gemini", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, maxTokens, model }),
-        });
-        if (res.status === 429) {
-          await new Promise(r => setTimeout(r, (attempt + 1) * 3000 + Math.random() * 2000));
-          continue;
-        }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) { lastErr = new Error(data?.error?.message || `Gemini ${res.status}`); break; }
-        const text = data?.text || "";
-        if (text) return text;
-        lastErr = new Error("Empty");
-      } catch (err) {
-        lastErr = err;
-        if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
-      }
-    }
+  try {
+    const res = await fetch("/api/gemini", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, maxTokens, temperature: 0.7 }),
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return data?.text || "";
+  } catch {
+    return "";
   }
-  return "";
 }
 async function askGemini(prompt, maxTokens = 1024) { return _enqueue(() => _rawGeminiCall(prompt, maxTokens)); }
 async function askGeminiJSON(prompt, maxTokens = 1024) { const raw = await askGemini(prompt + "\n\nRespond ONLY with valid JSON, no markdown fences, no extra text.", maxTokens); if (!raw) return null; const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim(); try { return JSON.parse(cleaned); } catch { return null; } }
-function _isValidQuizArray(qs, count) {
-  if (!Array.isArray(qs) || qs.length === 0) return false;
-  if (typeof count === "number" && qs.length < Math.min(3, count)) return false;
-  for (const q of qs) {
-    if (!q || typeof q.prompt !== "string" || !q.prompt.trim()) return false;
-    if (!Array.isArray(q.opts) || q.opts.length < 2) return false;
-    const ids = new Set();
-    for (const o of q.opts) {
-      if (!o || typeof o.id !== "string" || typeof o.t !== "string") return false;
-      ids.add(o.id);
-    }
-    if (typeof q.ans !== "string" || !ids.has(q.ans)) return false;
-  }
-  return true;
-}
-
-function _fallbackQuizBank() {
-  // Keep questions dependency-free and aligned with lessons.
-  return {
-    basics: [
-      { prompt: "Which best describes machine learning?", opts: [{ id: "a", t: "Hard-coding rules for every case" }, { id: "b", t: "Learning patterns from data to make predictions" }, { id: "c", t: "Storing files in the cloud" }, { id: "d", t: "Only drawing charts" }], ans: "b", why: "ML uses data to learn a mapping from inputs to outputs." },
-      { prompt: "In a dataset, features (X) are…", opts: [{ id: "a", t: "The answers you want to predict" }, { id: "b", t: "The inputs the model uses" }, { id: "c", t: "Always images" }, { id: "d", t: "Random noise" }], ans: "b", why: "Features are the inputs; labels are the targets." },
-      { prompt: "A train/test split is used to…", opts: [{ id: "a", t: "Make training faster only" }, { id: "b", t: "Estimate performance on unseen data" }, { id: "c", t: "Remove all noise" }, { id: "d", t: "Increase model size" }], ans: "b", why: "Testing on unseen data measures generalization." },
-      { prompt: "Overfitting means…", opts: [{ id: "a", t: "Model performs well on train but poorly on test" }, { id: "b", t: "Model has too little data" }, { id: "c", t: "Model is always linear" }, { id: "d", t: "Accuracy is always 100%" }], ans: "a", why: "Overfitting is memorizing training patterns/noise rather than general rules." },
-    ],
-    linreg: [
-      { prompt: "Linear regression predicts a…", opts: [{ id: "a", t: "Category" }, { id: "b", t: "Continuous value" }, { id: "c", t: "Random label" }, { id: "d", t: "Sorting order" }], ans: "b", why: "Regression outputs a real number." },
-      { prompt: "OLS fitting minimizes…", opts: [{ id: "a", t: "Sum of squared errors" }, { id: "b", t: "Number of features" }, { id: "c", t: "Maximum value of y" }, { id: "d", t: "Model size" }], ans: "a", why: "Ordinary least squares minimizes squared residuals (MSE)." },
-      { prompt: "MSE increases most when…", opts: [{ id: "a", t: "All errors are tiny" }, { id: "b", t: "A single error is large" }, { id: "c", t: "You add more features" }, { id: "d", t: "You rename variables" }], ans: "b", why: "Squaring penalizes large errors heavily." },
-    ],
-    logreg: [
-      { prompt: "Logistic regression outputs…", opts: [{ id: "a", t: "Any real number" }, { id: "b", t: "A probability between 0 and 1" }, { id: "c", t: "Only integers" }, { id: "d", t: "A centroid" }], ans: "b", why: "The sigmoid maps values into (0,1)." },
-      { prompt: "The decision boundary occurs where…", opts: [{ id: "a", t: "σ(z)=0.5 (z=0)" }, { id: "b", t: "σ(z)=1" }, { id: "c", t: "z is maximum" }, { id: "d", t: "loss is always zero" }], ans: "a", why: "At 0.5 probability, the model is indifferent between classes." },
-    ],
-    knn: [
-      { prompt: "KNN predicts by…", opts: [{ id: "a", t: "Fitting a line" }, { id: "b", t: "Voting among nearest neighbors" }, { id: "c", t: "Backpropagation" }, { id: "d", t: "Random guessing" }], ans: "b", why: "KNN uses distance to find neighbors and vote (or average)." },
-      { prompt: "Increasing K usually makes the decision boundary…", opts: [{ id: "a", t: "More jagged" }, { id: "b", t: "Smoother" }, { id: "c", t: "Always circular" }, { id: "d", t: "Undefined" }], ans: "b", why: "More neighbors reduces sensitivity to noise." },
-    ],
-    dtree: [
-      { prompt: "A decision tree chooses splits to…", opts: [{ id: "a", t: "Maximize impurity" }, { id: "b", t: "Best separate classes (increase information gain)" }, { id: "c", t: "Use every feature equally" }, { id: "d", t: "Avoid labels" }], ans: "b", why: "Splits aim to separate classes (e.g., maximize information gain)." },
-      { prompt: "Pruning helps reduce…", opts: [{ id: "a", t: "Underfitting" }, { id: "b", t: "Overfitting" }, { id: "c", t: "Feature values" }, { id: "d", t: "Dataset size" }], ans: "b", why: "Pruning simplifies the tree to generalize better." },
-    ],
-    gradient: [
-      { prompt: "Gradient descent updates parameters by moving…", opts: [{ id: "a", t: "Up the gradient" }, { id: "b", t: "Down the gradient of the loss" }, { id: "c", t: "Randomly" }, { id: "d", t: "Only once" }], ans: "b", why: "It moves opposite the gradient to reduce loss." },
-      { prompt: "A too-large learning rate can cause…", opts: [{ id: "a", t: "Faster and always stable convergence" }, { id: "b", t: "Overshooting and bouncing/diverging" }, { id: "c", t: "Zero gradients" }, { id: "d", t: "More data" }], ans: "b", why: "Big steps can overshoot the minimum." },
-    ],
-    mixed: [],
-  };
-}
-
-function _shuffle(arr) {
-  const a = arr.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function _pickFallbackQuestions(topicId, topicName, count = 5) {
-  const bank = _fallbackQuizBank();
-  const id = String(topicId || "").toLowerCase();
-  const name = String(topicName || "").toLowerCase();
-  const pickFrom = (arr) => _shuffle(arr).slice(0, count);
-
-  let pool = [];
-  if (id === "basics" || name.includes("basic")) pool = bank.basics;
-  else if (id === "linreg" || name.includes("linear regression")) pool = bank.linreg;
-  else if (id === "logreg" || name.includes("logistic regression")) pool = bank.logreg;
-  else if (id === "knn" || name.includes("k-nearest") || name.includes("knn")) pool = bank.knn;
-  else if (id === "dtree" || name.includes("decision tree")) pool = bank.dtree;
-  else if (id === "gradient" || name.includes("gradient descent")) pool = bank.gradient;
-  else pool = [...bank.basics, ...bank.linreg, ...bank.logreg, ...bank.knn, ...bank.dtree, ...bank.gradient];
-
-  // Ensure we always have enough by mixing in the global fallback.
-  const global = QUIZ_QS.map(q => ({ prompt: q.prompt, opts: q.opts, ans: q.ans, why: q.why }));
-  const merged = [...pool, ...global];
-  return pickFrom(merged);
-}
-
-async function generateAIQuiz(topic, level, count = 5) {
-  const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" for a ${level}-level AI/ML student. Return JSON array of objects with keys: "prompt" (question), "opts" (array of 4 {id,t} objects), "ans" (correct id), "why" (1 sentence explanation)`;
-  const qs = await askGeminiJSON(prompt, 1200);
-  return _isValidQuizArray(qs, count) ? qs : null;
-}
-
-async function generateQuizWithFallback(topicId, topicName, level, count = 5) {
-  const qs = await generateAIQuiz(topicName, level, count);
-  if (qs) return { qs, source: "ai" };
-  return { qs: _pickFallbackQuestions(topicId, topicName, count), source: "built-in" };
-}
-function _localCodeReviewFallback(code) {
-  const src = String(code || "");
-  const lines = src.split(/\r?\n/);
-  const nonEmpty = lines.filter(l => l.trim()).length;
-  const maxLen = Math.max(0, ...lines.map(l => l.length));
-  const hasPrint = /\bprint\s*\(/.test(src);
-  const hasIf = /\bif\b/.test(src);
-  const hasLoop = /\bfor\b|\bwhile\b/.test(src);
-  const hasFn = /\bdef\b|\bfunction\b/.test(src);
-  const hasAssign = /^[A-Za-z_]\w*\s*=/.test(lines.join("\n"));
-
-  const warnings = [];
-  if (maxLen > 120) warnings.push("Some lines are very long; consider breaking expressions for readability.");
-  if (!hasPrint) warnings.push("No output detected (no `print(...)`). If you expected output, add a print statement.");
-  if (!hasAssign && nonEmpty > 2) warnings.push("I don't see many assignments/updates; double-check that variables are being updated as intended.");
-  if (/==\s*None|!=\s*None/.test(src)) warnings.push("Prefer `is None` / `is not None` for None checks (Python style).");
-  if (/=\s*=\s*/.test(src)) warnings.push("Looks like there may be an `= =` typo (assignment vs equality).");
-  if (/\/\s*0\b/.test(src)) warnings.push("Potential division by zero.");
-
-  const whatItDoesParts = [];
-  if (hasLoop) whatItDoesParts.push("loops");
-  if (hasIf) whatItDoesParts.push("branches");
-  if (hasFn) whatItDoesParts.push("defines a function");
-  if (hasAssign) whatItDoesParts.push("uses variables");
-  const whatItDoes = whatItDoesParts.length ? `It ${whatItDoesParts.join(", ")}.` : "It’s a short snippet (hard to infer intent).";
-
-  const improvement = [];
-  if (nonEmpty > 0) improvement.push("Add a 1-line comment at the top stating the goal/input-output.");
-  if (hasLoop) improvement.push("Consider naming intermediate values clearly (e.g. `total`, `count`).");
-  improvement.push("Test with 2–3 small inputs (including edge cases) and confirm the output.");
-
-  const bugLine = warnings.length ? warnings[0] : "No obvious red flags from quick static checks.";
-
-  return [
-    `• What it does: ${whatItDoes}`,
-    `• Possible issue: ${bugLine}`,
-    `• Improvement: ${improvement[0]}`,
-    `• Encouragement: Nice work — keep iterating by testing and refining step by step.`,
-  ].join("\n");
-}
-
-async function reviewCode(code) {
-  const prompt = `Review this code briefly (4 bullet points max): what it does, bugs, improvement, encouragement.\n\`\`\`\n${code}\n\`\`\``;
-  const ai = await askGemini(prompt, 400);
-  if (ai && String(ai).trim()) return ai;
-  return _localCodeReviewFallback(code);
-}
+async function generateAIQuiz(topic, level, count = 5) { const prompt = `Generate ${count} multiple-choice quiz questions about "${topic}" for a ${level}-level AI/ML student. Return JSON array of objects with keys: "prompt" (question), "opts" (array of 4 {id,t} objects), "ans" (correct id), "why" (1 sentence explanation)`; return await askGeminiJSON(prompt, 1200); }
+async function reviewCode(code) { const prompt = `Review this code briefly (4 bullet points max): what it does, bugs, improvement, encouragement.\n\`\`\`\n${code}\n\`\`\``; return await askGemini(prompt, 400); }
 async function explainConcept(term, context) { const prompt = `Explain "${term}" in context of ${context || "AI/ML"} to a beginner. Simple analogy first, then 1-2 sentence technical definition. Under 60 words.`; return await askGemini(prompt, 200); }
 const chatHistory = [];
 async function chatWithTutor(message) { chatHistory.push({ role: "user", text: message }); const ctx = chatHistory.slice(-8).map(m => `${m.role === "user" ? "Student" : "Tutor"}: ${m.text}`).join("\n"); const reply = await askGemini(`You are a friendly AI/ML tutor. Keep answers concise (2-4 sentences). Use analogies.\n\n${ctx}\n\nTutor:`, 300); chatHistory.push({ role: "tutor", text: reply }); return reply; }
 
 // ── Section 3: User Model ───────────────────────────────────────
 function freshUser(email) {
-  const baseName = String(email || "").split("@")[0] || "Learner";
-  return { id:`u_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`, email, name: baseName, pw:"", createdAt:nowISO(), pts:0, badges:[], streak:{n:0,d:""}, prog:{mods:{},quiz:{},runs:0,sims:0,games:{}}, onboarded:false, level:"beginner", goal:"" };
+  return { id:`u_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`, email, pw:"", createdAt:nowISO(), pts:0, badges:[], streak:{n:0,d:""}, prog:{mods:{},quiz:{},runs:0,sims:0,games:{}}, onboarded:false, level:"beginner", goal:"" };
 }
 const loadUsers = () => rLS(LS_USERS, []);
 const saveUsers = (u) => wLS(LS_USERS, u);
@@ -332,13 +181,6 @@ function showOnboard() {
 
 // ── Section 5: Master Topics Data ───────────────────────────────
 const TOPICS = [
-  { id:"basics", icon:"📚", title:"AI/ML Basics", desc:"The core concepts you’ll need before any model: data, training, evaluation, and pitfalls", level:"Beginner", category:"Foundations",
-    subtopics:[
-      { id:"basics_1", title:"What is ML?", desc:"From rules to learning patterns from data" },
-      { id:"basics_2", title:"Data, Features, Labels", desc:"What the model actually sees and learns from" },
-      { id:"basics_3", title:"Train/Test + Overfitting", desc:"Generalization, leakage, and why accuracy can lie" },
-      { id:"basics_4", title:"Interactive Visualizer", desc:"Bias–variance intuition with a slider" }
-    ]},
   { id:"linreg", icon:"📈", title:"Linear Regression", desc:"Fit a line to data and predict continuous values", level:"Beginner", category:"Supervised",
     subtopics:[
       { id:"linreg_1", title:"What is Regression?", desc:"Understanding prediction of continuous values" },
@@ -351,7 +193,7 @@ const TOPICS = [
       { id:"logreg_1", title:"From Regression to Classification", desc:"Why a straight line isn't enough for categories" },
       { id:"logreg_2", title:"The Sigmoid Function", desc:"Squashing outputs into probabilities" },
       { id:"logreg_3", title:"Decision Boundary", desc:"Where the model draws the line between classes" },
-      { id:"logreg_4", title:"Interactive Visualizer", desc:"Tune w and b, watch the sigmoid and boundary move" }
+      { id:"logreg_4", title:"Log Loss", desc:"The cost function that guides logistic regression" }
     ]},
   { id:"perceptron", icon:"🧠", title:"Perceptron", desc:"The simplest neural unit — inputs, weights, and activation", level:"Beginner", category:"Neural Networks",
     subtopics:[
@@ -365,21 +207,21 @@ const TOPICS = [
       { id:"nn_1", title:"Layers & Architecture", desc:"How neurons are organized into layers" },
       { id:"nn_2", title:"Forward Pass", desc:"How data flows through the network" },
       { id:"nn_3", title:"Backpropagation", desc:"How the network learns from mistakes" },
-      { id:"nn_4", title:"Interactive Visualizer", desc:"Change inputs, see activations and output update" }
+      { id:"nn_4", title:"Interactive Visualizer", desc:"Watch signals flow through a live network" }
     ]},
   { id:"cnn", icon:"🖼️", title:"Convolutional Neural Net", desc:"Specialized networks that see patterns in images", level:"Advanced", category:"Neural Networks",
     subtopics:[
       { id:"cnn_1", title:"Convolution Operation", desc:"Sliding filters across images to detect features" },
       { id:"cnn_2", title:"Pooling Layers", desc:"Shrinking feature maps while keeping important info" },
       { id:"cnn_3", title:"Feature Hierarchy", desc:"From edges to objects — how CNNs build understanding" },
-      { id:"cnn_4", title:"Interactive Visualizer", desc:"Edit a filter and see convolution output" }
+      { id:"cnn_4", title:"Famous Architectures", desc:"LeNet, AlexNet, ResNet — milestones in vision AI" }
     ]},
   { id:"rnn", icon:"🔄", title:"Recurrent Neural Net", desc:"Networks with memory for sequential data", level:"Advanced", category:"Neural Networks",
     subtopics:[
       { id:"rnn_1", title:"Sequences & Time", desc:"Why order matters in language, music, and stock prices" },
       { id:"rnn_2", title:"Hidden State", desc:"The memory that carries information forward" },
       { id:"rnn_3", title:"Vanishing Gradients", desc:"Why basic RNNs forget and how LSTM fixes it" },
-      { id:"rnn_4", title:"Interactive Visualizer", desc:"Watch hidden state evolve over a sequence" }
+      { id:"rnn_4", title:"LSTM & GRU", desc:"Gates that control what to remember and forget" }
     ]},
   { id:"dtree", icon:"🌳", title:"Decision Tree", desc:"Classify data by asking yes/no questions", level:"Beginner", category:"Supervised",
     subtopics:[
@@ -393,14 +235,14 @@ const TOPICS = [
       { id:"rf_1", title:"Wisdom of Crowds", desc:"Why many weak models beat one strong model" },
       { id:"rf_2", title:"Bagging", desc:"Training each tree on a random subset of data" },
       { id:"rf_3", title:"Feature Randomness", desc:"Each tree sees different features — reducing correlation" },
-      { id:"rf_4", title:"Interactive Visualizer", desc:"See how many trees vote and why ensembles help" }
+      { id:"rf_4", title:"Out-of-Bag Error", desc:"Free validation without a separate test set" }
     ]},
   { id:"svm", icon:"⚔️", title:"Support Vector Machine", desc:"Find the widest gap between classes", level:"Intermediate", category:"Supervised",
     subtopics:[
       { id:"svm_1", title:"Maximum Margin", desc:"Why the widest street between classes generalizes best" },
       { id:"svm_2", title:"Support Vectors", desc:"The critical data points that define the boundary" },
       { id:"svm_3", title:"Kernel Trick", desc:"Bending space so curved boundaries become straight" },
-      { id:"svm_4", title:"Interactive Visualizer", desc:"Adjust boundary and margin; watch violations" }
+      { id:"svm_4", title:"Soft Margin", desc:"Allowing some misclassification for a better overall fit" }
     ]},
   { id:"knn", icon:"📍", title:"K-Nearest Neighbors", desc:"Classify by asking your closest neighbors to vote", level:"Beginner", category:"Supervised",
     subtopics:[
@@ -414,47 +256,46 @@ const TOPICS = [
       { id:"kmeans_1", title:"What is Clustering?", desc:"Finding natural groups without labels" },
       { id:"kmeans_2", title:"The Algorithm", desc:"Assign, update centroids, repeat until stable" },
       { id:"kmeans_3", title:"Choosing K", desc:"The elbow method and silhouette scores" },
-      { id:"kmeans_4", title:"Interactive Visualizer", desc:"Step assign/update and watch clusters form" }
+      { id:"kmeans_4", title:"Limitations", desc:"When clusters aren't round or evenly sized" }
     ]},
   { id:"pca", icon:"📐", title:"PCA", desc:"Reduce dimensions while keeping the most information", level:"Intermediate", category:"Unsupervised",
     subtopics:[
       { id:"pca_1", title:"The Curse of Dimensions", desc:"Why fewer features can mean better models" },
       { id:"pca_2", title:"Variance & Directions", desc:"Finding the axes of maximum spread" },
       { id:"pca_3", title:"Eigenvalues & Eigenvectors", desc:"The math behind principal components" },
-      { id:"pca_4", title:"Interactive Visualizer", desc:"Rotate the axis and see variance captured" }
+      { id:"pca_4", title:"Choosing Components", desc:"How many dimensions to keep" }
     ]},
   { id:"naive", icon:"📊", title:"Naive Bayes", desc:"Classify using probability and Bayes' theorem", level:"Beginner", category:"Supervised",
     subtopics:[
       { id:"naive_1", title:"Bayes' Theorem", desc:"Updating beliefs with new evidence" },
       { id:"naive_2", title:"The Naive Assumption", desc:"Treating features as independent — and why it works" },
       { id:"naive_3", title:"Spam Classification", desc:"A classic use case for Naive Bayes" },
-      { id:"naive_4", title:"Interactive Visualizer", desc:"Move probabilities and see posterior update" }
+      { id:"naive_4", title:"Laplace Smoothing", desc:"Handling words the model has never seen" }
     ]},
   { id:"gradient", icon:"⛰️", title:"Gradient Descent", desc:"Optimize models by rolling downhill on the loss surface", level:"Intermediate", category:"Optimization",
     subtopics:[
       { id:"gradient_1", title:"The Loss Landscape", desc:"Visualizing error as a surface to descend" },
       { id:"gradient_2", title:"Learning Rate", desc:"How big each step should be" },
       { id:"gradient_3", title:"SGD & Mini-Batch", desc:"Using subsets of data for faster updates" },
-      { id:"gradient_4", title:"Interactive Visualizer", desc:"Step gradient descent and see loss drop" }
+      { id:"gradient_4", title:"Momentum & Adam", desc:"Smarter optimizers that learn to accelerate" }
     ]},
   { id:"nlp", icon:"💬", title:"NLP Fundamentals", desc:"Teaching machines to understand human language", level:"Advanced", category:"Applied",
     subtopics:[
       { id:"nlp_1", title:"Tokenization", desc:"Breaking text into pieces a model can digest" },
       { id:"nlp_2", title:"Word Embeddings", desc:"Representing words as meaningful vectors" },
       { id:"nlp_3", title:"Attention Mechanism", desc:"How transformers focus on relevant words" },
-      { id:"nlp_4", title:"Interactive Visualizer", desc:"Tokenize text and visualize bag-of-words" }
+      { id:"nlp_4", title:"Transformers & GPT", desc:"The architecture behind modern language models" }
     ]},
   { id:"rl", icon:"🎮", title:"Reinforcement Learning", desc:"Agents that learn by trial, error, and reward", level:"Advanced", category:"Applied",
     subtopics:[
       { id:"rl_1", title:"Agent & Environment", desc:"The loop of observe, act, and receive reward" },
       { id:"rl_2", title:"Reward Signals", desc:"Designing rewards that lead to desired behavior" },
       { id:"rl_3", title:"Exploration vs Exploitation", desc:"Trying new things vs. sticking with what works" },
-      { id:"rl_4", title:"Interactive Visualizer", desc:"Simulate ε-greedy exploration on a bandit" }
+      { id:"rl_4", title:"Q-Learning", desc:"Learning the value of actions from experience" }
     ]},
 ];
 
 const VISUALIZER_MAP = {
-  basics_4: "basics",
   linreg_4: "linreg",
   perceptron_4: "perceptron",
   nn_4: "nn",
@@ -481,7 +322,6 @@ function renderView(name) {
   if (!u) return;
   const map = {
     dashboard: renderDashboard,
-    progress: renderProgress,
     learn: renderLearn,
     learnTopic: () => {},
     lesson: () => {},
@@ -497,7 +337,6 @@ function renderView(name) {
     simulate: renderSimulate,
     simulation: () => {},
     leaderboard: renderLeaderboard,
-    profile: renderProfile,
   };
   if (map[name]) map[name](u);
 }
@@ -626,7 +465,6 @@ function renderDashboard(user) {
     const subs = t.subtopics;
     return subs.every(s => user.prog.mods[s.id]);
   }).length;
-  const totalTopics = TOPICS.length || 1;
   const acts = rLS(LS_ACT, []).filter(a => a.uid === user.id).slice(-5).reverse();
 
   const nextTopic = TOPICS.find(t => !t.subtopics.every(s => user.prog.mods[s.id]));
@@ -636,7 +474,7 @@ function renderDashboard(user) {
     <div class="dashGrid">
       <div class="statCard"><div class="statVal">${user.pts || 0}</div><div class="statLabel">Points</div></div>
       <div class="statCard"><div class="statVal">${user.streak?.n || 0}</div><div class="statLabel">Day Streak</div></div>
-      <div class="statCard"><div class="statVal">${topicsDone}/${totalTopics}</div><div class="statLabel">Topics Done</div></div>
+      <div class="statCard"><div class="statVal">${topicsDone}/16</div><div class="statLabel">Topics Done</div></div>
       <div class="statCard"><div class="statVal">${user.badges?.length || 0}</div><div class="statLabel">Badges</div></div>
     </div>
     ${renderHeatmap(user.id)}
@@ -667,241 +505,15 @@ function renderDashboard(user) {
   }
 }
 
-// ── Progress Module ───────────────────────────────────────────────
-function renderProgress(user) {
-  const root = $("v_progress");
-  const mods = user.prog?.mods || {};
-  const totalLessons = TOPICS.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
-  const lessonsDone = Object.keys(mods).length;
-  const lessonPct = totalLessons ? Math.round((lessonsDone / totalLessons) * 100) : 0;
-
-  const topics = TOPICS.map(t => {
-    const total = t.subtopics.length;
-    const done = t.subtopics.filter(s => mods[s.id]).length;
-    const pct = total ? Math.round((done / total) * 100) : 0;
-    const nextSub = t.subtopics.find(s => !mods[s.id]) || null;
-    const lastDoneIso = t.subtopics
-      .map(s => mods[s.id])
-      .filter(Boolean)
-      .sort()
-      .slice(-1)[0] || null;
-    return { ...t, total, done, pct, nextSub, lastDoneIso };
-  });
-
-  const topicsDone = topics.filter(t => t.done === t.total && t.total > 0).length;
-  const totalTopics = TOPICS.length || 1;
-  const nextTopic = topics.find(t => t.nextSub) || null;
-
-  const recent = Object.entries(mods)
-    .map(([id, iso]) => ({ id, iso }))
-    .sort((a, b) => (a.iso < b.iso ? 1 : -1))
-    .slice(0, 8)
-    .map(r => {
-      const t = TOPICS.find(tp => tp.subtopics.some(s => s.id === r.id));
-      const s = t?.subtopics.find(st => st.id === r.id);
-      if (!t || !s) return null;
-      return { topicId: t.id, topicTitle: t.title, subTitle: s.title, iso: r.iso, icon: t.icon };
-    })
-    .filter(Boolean);
-
-  root.innerHTML = `
-    <h2 style="margin:0 0 4px">Progress</h2>
-    <p class="sub" style="margin:0 0 16px">Track your learning across topics and lessons.</p>
-
-    <div class="panel" style="margin-bottom:16px">
-      <div class="g3">
-        <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-          <div class="statVal">${lessonPct}%</div>
-          <div class="statLabel">Overall completion</div>
-        </div>
-        <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-          <div class="statVal">${lessonsDone}/${totalLessons}</div>
-          <div class="statLabel">Lessons done</div>
-        </div>
-        <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-          <div class="statVal">${topicsDone}/${totalTopics}</div>
-          <div class="statLabel">Topics completed</div>
-        </div>
-      </div>
-      <div class="pbar" style="margin-top:14px"><div style="width:${lessonPct}%"></div></div>
-      ${nextTopic ? `
-        <div class="sub" style="margin-top:10px">
-          Next up: <b>${esc(nextTopic.title)}</b> — ${esc(nextTopic.nextSub?.title || "")}
-          <button class="btn sm" id="progResumeBtn" type="button" style="margin-left:10px">Resume</button>
-        </div>
-      ` : `<div class="sub" style="margin-top:10px">Everything complete. Try the quiz or games to keep practicing.</div>`}
-    </div>
-
-    <div class="g2">
-      <div class="panel">
-        <div class="panelTitle">By topic</div>
-        <div style="display:grid;gap:10px;margin-top:10px">
-          ${topics.map(t => `
-            <div class="stNode" data-tid="${esc(t.id)}" style="margin:0;cursor:pointer">
-              <div style="width:34px;text-align:center;font-size:22px;line-height:28px">${t.icon}</div>
-              <div class="stInfo" style="flex:1">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-                  <div class="stTitle">${esc(t.title)}</div>
-                  <div class="sub" style="white-space:nowrap">${t.done}/${t.total}</div>
-                </div>
-                <div class="pbar" style="margin:8px 0 6px"><div style="width:${t.pct}%"></div></div>
-                <div class="sub">
-                  ${t.done === t.total
-                    ? `Completed ${t.lastDoneIso ? `• last: ${new Date(t.lastDoneIso).toLocaleDateString()}` : ""}`
-                    : `Next: ${esc(t.nextSub?.title || "—")}`}
-                </div>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panelTitle">Recent completions</div>
-        ${recent.length === 0
-          ? `<div class="sub" style="margin-top:10px">No completed lessons yet. Open a topic and tap “Mark Complete”.</div>`
-          : `<div class="activityList" style="margin-top:10px">
-              ${recent.map(r => `
-                <div class="actItem" data-tid="${esc(r.topicId)}">
-                  <div class="actDot" style="background:var(--success)"></div>
-                  <div style="flex:1">
-                    <div style="font-weight:700">${esc(r.topicTitle)} — ${esc(r.subTitle)}</div>
-                    <div class="sub">${new Date(r.iso).toLocaleString()}</div>
-                  </div>
-                  <button class="btn sm" type="button" data-open="1">Open</button>
-                </div>
-              `).join("")}
-            </div>`}
-      </div>
-    </div>
-  `;
-
-  const resumeBtn = $("progResumeBtn");
-  if (resumeBtn && nextTopic) resumeBtn.addEventListener("click", () => openLesson(nextTopic.id, nextTopic.nextSub.id));
-
-  root.querySelectorAll("[data-tid]").forEach(el => {
-    el.addEventListener("click", (e) => {
-      const tid = el.dataset.tid;
-      if (!tid) return;
-      // if "Open" button inside recent list, still open topic (simple + consistent)
-      openTopic(tid);
-    });
-  });
-}
-
-function renderProfile(user) {
-  const root = $("v_profile");
-  const mods = user.prog?.mods || {};
-  const totalLessons = TOPICS.reduce((acc, t) => acc + (t.subtopics?.length || 0), 0);
-  const lessonsDone = Object.keys(mods).length;
-  const lessonPct = totalLessons ? Math.round((lessonsDone / totalLessons) * 100) : 0;
-  const totalTopics = TOPICS.length || 1;
-  const topicsDone = TOPICS.filter(t => t.subtopics.every(s => mods[s.id])).length;
-
-  root.innerHTML = `
-    <h2 style="margin:0 0 4px">Profile</h2>
-    <p class="sub" style="margin:0 0 16px">Your account and learning stats.</p>
-
-    <div class="g2" style="gap:12px">
-      <div class="panel">
-        <div class="panelTitle">Account</div>
-        <div class="sub" style="margin-top:10px"><b>Name:</b> ${esc(user.name || user.email.split("@")[0] || "Learner")}</div>
-        <div class="sub" style="margin-top:10px"><b>Email:</b> ${esc(user.email)}</div>
-        <div class="sub" style="margin-top:6px"><b>Joined:</b> ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</div>
-        <div class="sub" style="margin-top:12px"><b>Badges:</b> ${user.badges?.length ? user.badges.map(b => `<span class="pill" style="margin-right:6px">${esc(b)}</span>`).join("") : "—"}</div>
-
-        <div style="margin-top:14px;display:grid;gap:10px">
-          <label style="display:grid;gap:6px">
-            <span class="sub" style="font-weight:600">Display name</span>
-            <input id="profName" type="text" maxlength="40" placeholder="Your name" />
-          </label>
-          <label style="display:grid;gap:6px">
-            <span class="sub" style="font-weight:600">Level</span>
-            <select id="profLevel">
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
-          </label>
-          <label style="display:grid;gap:6px">
-            <span class="sub" style="font-weight:600">Goal</span>
-            <select id="profGoal">
-              <option value="">—</option>
-              <option value="understand">Understand</option>
-              <option value="build">Build</option>
-              <option value="career">Career</option>
-            </select>
-          </label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button id="profSave" class="btn primary sm" type="button">Save</button>
-            <button id="profLogout" class="btn sm ghost" type="button">Logout</button>
-          </div>
-          <div id="profMsg" class="sub hidden" style="padding:10px;border-radius:10px;background:rgba(107,158,158,.12)"></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panelTitle">Learning</div>
-        <div class="g3" style="margin-top:10px">
-          <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-            <div class="statVal">${user.pts || 0}</div>
-            <div class="statLabel">Points</div>
-          </div>
-          <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-            <div class="statVal">${user.streak?.n || 0}</div>
-            <div class="statLabel">Streak</div>
-          </div>
-          <div class="statCard" style="box-shadow:none;background:var(--canvas)">
-            <div class="statVal">${lessonsDone}/${totalLessons}</div>
-            <div class="statLabel">Lessons done</div>
-          </div>
-        </div>
-        <div class="sub" style="margin-top:10px">${topicsDone} of ${totalTopics} topics completed</div>
-        <div class="pbar" style="margin-top:10px"><div style="width:${lessonPct}%"></div></div>
-      </div>
-    </div>
-  `;
-
-  const levelEl = $("profLevel");
-  const goalEl = $("profGoal");
-  const nameEl = $("profName");
-  if (levelEl) levelEl.value = user.level || "beginner";
-  if (goalEl) goalEl.value = user.goal || "";
-  if (nameEl) nameEl.value = user.name || (user.email?.split("@")[0] || "");
-
-  const msg = $("profMsg");
-  const showMsg = (t) => { if (!msg) return; msg.textContent = t; msg.classList.remove("hidden"); setTimeout(() => msg.classList.add("hidden"), 1800); };
-
-  $("profSave")?.addEventListener("click", () => {
-    let u = me();
-    if (!u) return;
-    const nextNameRaw = (nameEl?.value || "").trim();
-    const nextName = nextNameRaw || (u.email?.split("@")[0] || "Learner");
-    u = { ...u, name: nextName, level: levelEl?.value || u.level, goal: goalEl?.value || u.goal };
-    save(u);
-    updateChip();
-    showMsg("Saved.");
-  });
-
-  $("profLogout")?.addEventListener("click", () => {
-    fbAuth.signOut();
-    clearSess();
-    showAuth();
-  });
-}
-
 // ── Section 8: Learn Module ─────────────────────────────────────
 function renderLearn(user) {
-  user = user || me();
-  if (!user) return;
   const root = $("v_learn");
-  const totalTopics = TOPICS.length || 1;
   const topicsDone = TOPICS.filter(t => t.subtopics.every(s => user.prog.mods[s.id])).length;
 
   root.innerHTML = `
     <h2 style="margin:0 0 4px">Learn AI/ML</h2>
-    <p class="sub" style="margin:0 0 16px">${topicsDone} of ${totalTopics} topics completed</p>
-    <div class="pbar" style="margin-bottom:18px"><div style="width:${Math.round((topicsDone/totalTopics)*100)}%"></div></div>
+    <p class="sub" style="margin:0 0 16px">${topicsDone} of 16 topics completed</p>
+    <div class="pbar" style="margin-bottom:18px"><div style="width:${Math.round((topicsDone/16)*100)}%"></div></div>
     <div class="learnGrid">
       ${TOPICS.map(t => {
         const done = t.subtopics.filter(s => user.prog.mods[s.id]).length;
@@ -1000,40 +612,6 @@ function openLesson(topicId, subtopicId) {
 
 // ── Section 9: Lesson Renderer + Content ────────────────────────
 const LESSON_CONTENT = {
-  basics_1: `
-    <div class="concept">
-      <h3>What is Machine Learning?</h3>
-      <p><b>Analogy:</b> Instead of writing a rulebook for every situation, you show examples and let the system <i>learn the pattern</i>.</p>
-      <p><b>Machine Learning (ML)</b> is when a model learns a mapping from inputs (features) to outputs (predictions) using data.</p>
-    </div>
-    <div class="formula">Model: input → prediction<br><span class="sub">Training = adjust parameters to reduce error on examples</span></div>
-    <div class="interactive">
-      <b>Spot it:</b> Spam filtering, face unlock, product recommendations — all learn patterns from data.
-    </div>`,
-
-  basics_2: `
-    <div class="concept">
-      <h3>Data, Features, and Labels</h3>
-      <p><b>Analogy:</b> Features are the clues, labels are the answer key.</p>
-      <p><b>Features (X)</b> are the measurable inputs (e.g., house size, number of rooms). <b>Labels (y)</b> are what you want to predict (e.g., price).</p>
-      <p>Good features are informative, consistent, and available at prediction time.</p>
-    </div>
-    <div class="formula">Dataset = (X, y)<br><span class="sub">Rows = examples, columns = features</span></div>
-    <div class="interactive">
-      <b>Watch out:</b> <b>Data leakage</b> happens when a feature accidentally includes future/answer information (inflates accuracy, fails in real life).
-    </div>`,
-
-  basics_3: `
-    <div class="concept">
-      <h3>Train/Test Split and Overfitting</h3>
-      <p><b>Analogy:</b> Memorizing answers vs learning the subject. A student can ace a practice sheet (train) but fail a new sheet (test) if they memorized.</p>
-      <p>We evaluate on <b>unseen data</b> to measure generalization. If a model fits training data too closely, it can <b>overfit</b>.</p>
-    </div>
-    <div class="formula">Train → fit parameters<br>Test → estimate real-world performance</div>
-    <div class="interactive">
-      <b>Rule of thumb:</b> If training performance keeps improving but test performance stalls or drops, you’re likely overfitting.
-    </div>`,
-
   linreg_1: `
     <div class="concept">
       <h3>What is Regression?</h3>
@@ -1686,1503 +1264,12 @@ const LESSON_CONTENT = {
     </div>`,
 };
 
-// ── Interactive lesson registry (visual, hands-on mini-labs) ─────
-function labShell({ title, subtitle, controlsHtml, vizHtml, notesHtml }) {
-  return `
-    <div class="labWrap">
-      <div class="labHead">
-        <div>
-          <div class="labKicker">${esc(subtitle || "")}</div>
-          <h3 class="labTitle">${esc(title || "Interactive Lab")}</h3>
-        </div>
-      </div>
-      <div class="labGrid">
-        <div class="labControls">${controlsHtml || ""}</div>
-        <div class="labViz">${vizHtml || ""}</div>
-      </div>
-      ${notesHtml ? `<div class="labNotes">${notesHtml}</div>` : ""}
-    </div>
-  `;
-}
-
-const LAB_NOTES = {
-  basics_4: `<div class="sub"><b>What to try:</b> Move the slider from “Simple” to “Too complex”. Watch how training error always improves, but test error eventually gets worse (overfitting).</div>`,
-  linreg_4: `<div class="sub"><b>What to try:</b> seed points, then drag one point far away. Watch how the line and MSE change. Outliers matter.</div>`,
-  logreg_4: `<div class="sub"><b>What to try:</b> flip the sign of w. Notice the sigmoid curve flips direction and the boundary shifts.</div>`,
-  perceptron_4: `<div class="sub"><b>What to try:</b> keep inputs fixed and sweep the bias. You’re shifting the decision threshold.</div>`,
-  nn_4: `<div class="sub"><b>What to try:</b> randomize weights a few times. Same inputs can produce different outputs depending on parameters.</div>`,
-  cnn_4: `<div class="sub"><b>What to try:</b> draw an edge in the image (0s on left, 1s on right) and use an edge-style filter.</div>`,
-  rnn_4: `<div class="sub"><b>What to try:</b> increase |w_state|. The hidden state “remembers” longer (or explodes/oscillates if too large).</div>`,
-  dtree_4: `<div class="sub"><b>What to try:</b> grow 2–3 splits, then classify multiple samples. You’re traversing a decision path.</div>`,
-  rf_4: `<div class="sub"><b>What to try:</b> increase the number of trees. Voting becomes more stable than a single stump.</div>`,
-  svm_4: `<div class="sub"><b>What to try:</b> increase the margin and see more violations (harder constraint). Soft margins tolerate some errors.</div>`,
-  knn_4: `<div class="sub"><b>What to try:</b> switch K from 1 to 9. Larger K smooths predictions and reduces sensitivity to noise.</div>`,
-  kmeans_4: `<div class="sub"><b>What to try:</b> place centroids badly on purpose, then do Assign → Update repeatedly. It converges.</div>`,
-  pca_4: `<div class="sub"><b>What to try:</b> find the angle that maximizes variance share. That’s the first principal component.</div>`,
-  naive_4: `<div class="sub"><b>What to try:</b> make P(word|spam) close to P(word|ham). The word becomes uninformative.</div>`,
-  gradient_4: `<div class="sub"><b>What to try:</b> raise learning rate too high. You’ll overshoot and bounce instead of converging.</div>`,
-  nlp_4: `<div class="sub"><b>What to try:</b> repeat a word many times. Bag-of-words captures counts but ignores order.</div>`,
-  rl_4: `<div class="sub"><b>What to try:</b> compare ε=0 vs ε=0.5. With no exploration, you can get stuck with a bad arm.</div>`,
-};
-
-const INTERACTIVE_LESSONS = {
-  // Implementations are added/filled in below during the visualizer tasks.
-  basics_4: (mount) => {
-    const uid = `bas_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { c: 3 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Model complexity</div>
-        <div class="sub">Higher complexity fits training data better, but can overfit and generalize worse.</div>
-        <div class="labRow" style="margin-top:10px"><label>complexity</label><input id="${uid}_c" type="range" min="1" max="12" step="1" value="${st.c}"><span id="${uid}_vc" class="labMono">${st.c}</span></div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">What to notice</div>
-        <div class="sub">Training error ↓ monotonically. Test error ↓ then ↑.</div>
-      </div>
-    `;
-    mount.viz.innerHTML = `
-      <canvas id="${uid}_cv" class="labCanvas" width="720" height="420"></canvas>
-      <div class="sub" style="margin-top:10px">This is an intuition sketch (not a real dataset) for the <b>bias–variance tradeoff</b>.</div>
-    `;
-    const canvas = $(uid + "_cv");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-
-    const cEl = $(uid + "_c");
-    const vcEl = $(uid + "_vc");
-
-    function trainErr(c) { return clamp(0.05 + 0.95 * Math.exp(-c / 3.2), 0.05, 1); }
-    function testErr(c) {
-      // U-shaped: bias decreases, variance increases
-      const bias = 0.12 + 0.95 * Math.exp(-c / 3.4);
-      const varTerm = 0.02 + 0.006 * (c - 4) * (c - 4);
-      return clamp(bias + varTerm, 0.06, 1);
-    }
-
-    function drawCurve(fn, color) {
-      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
-      ctx.beginPath();
-      for (let i = 0; i <= 220; i++) {
-        const c = 1 + (11 * i) / 220;
-        const v = fn(c);
-        const px = x0 + ((c - 1) / 11) * pw;
-        const py = y0 - v * ph;
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.4;
-      ctx.stroke();
-    }
-
-    function drawMarker(c, v, color) {
-      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
-      const px = x0 + ((c - 1) / 11) * pw;
-      const py = y0 - v * ph;
-      ctx.beginPath(); ctx.arc(px, py, 6.5, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-
-      // axes box
-      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
-      ctx.strokeStyle = "rgba(255,255,255,.08)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x0, y0 - ph, pw, ph);
-
-      // grid
-      ctx.strokeStyle = "rgba(255,255,255,.06)";
-      for (let i = 1; i <= 4; i++) {
-        const y = y0 - (i / 5) * ph;
-        ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + pw, y); ctx.stroke();
-      }
-      for (let i = 1; i <= 5; i++) {
-        const x = x0 + (i / 6) * pw;
-        ctx.beginPath(); ctx.moveTo(x, y0 - ph); ctx.lineTo(x, y0); ctx.stroke();
-      }
-
-      // labels
-      ctx.fillStyle = "rgba(255,255,255,.85)";
-      ctx.font = "700 14px var(--sans)";
-      ctx.fillText("Error", x0, y0 - ph - 14);
-      ctx.font = "12px var(--sans)";
-      ctx.fillStyle = "rgba(255,255,255,.65)";
-      ctx.fillText("Complexity →", x0 + pw - 110, y0 + 34);
-
-      // curves
-      drawCurve(trainErr, "rgba(107,255,184,.85)");
-      drawCurve(testErr, "rgba(224,122,95,.9)");
-
-      // markers at current complexity
-      const tr = trainErr(st.c);
-      const te = testErr(st.c);
-      drawMarker(st.c, tr, "rgba(107,255,184,.9)");
-      drawMarker(st.c, te, "rgba(224,122,95,.95)");
-
-      // legend
-      ctx.fillStyle = "rgba(255,255,255,.85)";
-      ctx.font = "12px var(--sans)";
-      ctx.fillText("Training error", x0 + 12, y0 - ph + 22);
-      ctx.fillStyle = "rgba(107,255,184,.9)";
-      ctx.fillRect(x0 + 110, y0 - ph + 14, 20, 4);
-      ctx.fillStyle = "rgba(255,255,255,.85)";
-      ctx.fillText("Test error", x0 + 12, y0 - ph + 44);
-      ctx.fillStyle = "rgba(224,122,95,.95)";
-      ctx.fillRect(x0 + 110, y0 - ph + 36, 20, 4);
-    }
-
-    cEl.addEventListener("input", () => {
-      st.c = parseInt(cEl.value, 10);
-      vcEl.textContent = String(st.c);
-      draw();
-    });
-    draw();
-  },
-  linreg_4: (mount) => {
-    const uid = `lr_${Math.random().toString(36).slice(2, 8)}`;
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Controls</div>
-        <div class="sub">Click on the canvas to add points. Drag a point to move it.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="btn primary sm" id="${uid}_snap" type="button">Seed points</button>
-          <button class="btn ghost sm" id="${uid}_clear" type="button">Clear</button>
-        </div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">Live metrics</div>
-        <div id="${uid}_info" class="sub labMono" style="white-space:pre-wrap">Add at least 2 points.</div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const info = $(uid + "_info");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-
-    let pts = [];
-    let dragging = -1;
-
-    function fitLine() {
-      if (pts.length < 2) return null;
-      const n = pts.length;
-      let sx = 0, sy = 0, sxy = 0, sx2 = 0;
-      pts.forEach(p => { sx += p.x; sy += p.y; sxy += p.x * p.y; sx2 += p.x * p.x; });
-      const denom = n * sx2 - sx * sx;
-      if (Math.abs(denom) < 1e-10) return null;
-      const m = (n * sxy - sx * sy) / denom;
-      const b = (sy - m * sx) / n;
-      let mse = 0;
-      pts.forEach(p => { mse += (p.y - (m * p.x + b)) ** 2; });
-      mse /= n;
-      return { m, b, mse };
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-
-      // axes
-      ctx.strokeStyle = "rgba(255,255,255,.07)";
-      ctx.lineWidth = 1;
-      for (let x = 60; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-      for (let y = 60; y < H; y += 60) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-
-      const fit = fitLine();
-      if (fit) {
-        ctx.beginPath();
-        ctx.moveTo(0, fit.b);
-        ctx.lineTo(W, fit.m * W + fit.b);
-        ctx.strokeStyle = "rgba(224,122,95,.85)";
-        ctx.lineWidth = 2.2;
-        ctx.stroke();
-
-        // residuals
-        pts.forEach(p => {
-          const pred = fit.m * p.x + fit.b;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x, pred);
-          ctx.strokeStyle = "rgba(255,107,107,.28)";
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 4]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        });
-        info.textContent = `y = ${fit.m.toFixed(4)}·x + ${fit.b.toFixed(2)}\nMSE = ${fit.mse.toFixed(1)}\nPoints: ${pts.length}`;
-      } else {
-        info.textContent = pts.length < 2 ? "Add at least 2 points." : "Line fit is unstable (points nearly vertical).";
-      }
-
-      pts.forEach((p, i) => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
-        ctx.fillStyle = i === dragging ? "rgba(107,255,184,.75)" : "rgba(107,158,158,.85)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,.25)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
-    }
-
-    function toXY(e) {
-      const r = canvas.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
-    }
-    function hitTest(x, y) {
-      for (let i = pts.length - 1; i >= 0; i--) {
-        if (Math.hypot(pts[i].x - x, pts[i].y - y) <= 12) return i;
-      }
-      return -1;
-    }
-
-    canvas.addEventListener("mousedown", (e) => {
-      const { x, y } = toXY(e);
-      const hit = hitTest(x, y);
-      if (hit >= 0) { dragging = hit; draw(); return; }
-      pts.push({ x, y });
-      draw();
-    });
-    window.addEventListener("mousemove", (e) => {
-      if (dragging < 0) return;
-      const { x, y } = toXY(e);
-      pts[dragging] = { x: clamp(x, 0, W), y: clamp(y, 0, H) };
-      draw();
-    });
-    window.addEventListener("mouseup", () => { if (dragging >= 0) { dragging = -1; draw(); } });
-
-    $(uid + "_clear").addEventListener("click", () => { pts = []; draw(); });
-    $(uid + "_snap").addEventListener("click", () => {
-      pts = Array.from({ length: 6 }, (_, i) => ({
-        x: 120 + i * 90 + (Math.random() * 20 - 10),
-        y: 260 - i * 25 + (Math.random() * 40 - 20),
-      }));
-      draw();
-    });
-    draw();
-  },
-
-  knn_4: (mount) => {
-    const uid = `knn_${Math.random().toString(36).slice(2, 8)}`;
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Controls</div>
-        <div class="labRow"><label>K</label><input id="${uid}_k" type="range" min="1" max="9" step="2" value="3"><span class="labMono" id="${uid}_kv">3</span></div>
-        <div class="sub">Left click = Blue, Right click = Red. Toggle classify mode, then click to predict.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button class="btn primary sm" id="${uid}_mode" type="button">Classify mode</button>
-          <button class="btn ghost sm" id="${uid}_seed" type="button">Seed</button>
-          <button class="btn ghost sm" id="${uid}_clear" type="button">Clear</button>
-        </div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">Result</div>
-        <div id="${uid}_info" class="sub">Place some points to get started.</div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-
-    let points = [];
-    let classifyMode = false;
-    let lastQuery = null;
-    let lastNeighbors = [];
-
-    const kEl = $(uid + "_k");
-    const kv = $(uid + "_kv");
-    const info = $(uid + "_info");
-    const modeBtn = $(uid + "_mode");
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-
-      if (lastQuery && lastNeighbors.length) {
-        lastNeighbors.forEach(n => {
-          ctx.beginPath();
-          ctx.moveTo(lastQuery.x, lastQuery.y);
-          ctx.lineTo(n.x, n.y);
-          ctx.strokeStyle = "rgba(107,158,158,.35)";
-          ctx.lineWidth = 1;
-          ctx.setLineDash([5, 5]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        });
-      }
-
-      points.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
-        ctx.fillStyle = p.cls === 0 ? "rgba(224,122,95,.85)" : "rgba(255,107,107,.85)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,.2)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
-
-      if (lastQuery) {
-        ctx.beginPath();
-        ctx.arc(lastQuery.x, lastQuery.y, 10, 0, Math.PI * 2);
-        ctx.fillStyle = lastQuery.cls === 0 ? "rgba(224,122,95,.45)" : "rgba(255,107,107,.45)";
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 9px var(--sans)";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("?", lastQuery.x, lastQuery.y);
-        ctx.textBaseline = "alphabetic";
-      }
-    }
-
-    function toXY(e) {
-      const r = canvas.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
-    }
-    function classify(qx, qy) {
-      const k = parseInt(kEl.value, 10);
-      const dists = points.map(p => ({ ...p, d: Math.hypot(p.x - qx, p.y - qy) }));
-      dists.sort((a, b) => a.d - b.d);
-      const neighbors = dists.slice(0, Math.min(k, dists.length));
-      lastNeighbors = neighbors;
-      const votes = [0, 0];
-      neighbors.forEach(n => votes[n.cls]++);
-      const cls = votes[0] >= votes[1] ? 0 : 1;
-      lastQuery = { x: qx, y: qy, cls };
-      draw();
-      info.innerHTML = `K=${k} | Blue ${votes[0]} vs Red ${votes[1]} → <b>${cls === 0 ? "Blue" : "Red"}</b>`;
-    }
-
-    canvas.addEventListener("click", (e) => {
-      const { x, y } = toXY(e);
-      if (classifyMode && points.length >= 2) { classify(x, y); return; }
-      points.push({ x, y, cls: 0 });
-      draw();
-    });
-    canvas.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      const { x, y } = toXY(e);
-      points.push({ x, y, cls: 1 });
-      draw();
-    });
-
-    kEl.addEventListener("input", () => { kv.textContent = kEl.value; if (lastQuery) classify(lastQuery.x, lastQuery.y); });
-    modeBtn.addEventListener("click", () => {
-      classifyMode = !classifyMode;
-      modeBtn.textContent = classifyMode ? "Place mode" : "Classify mode";
-    });
-    $(uid + "_clear").addEventListener("click", () => { points = []; lastQuery = null; lastNeighbors = []; info.textContent = "Cleared."; draw(); });
-    $(uid + "_seed").addEventListener("click", () => {
-      points = [];
-      for (let i = 0; i < 8; i++) points.push({ x: 140 + Math.random() * 220, y: 90 + Math.random() * 260, cls: 0 });
-      for (let i = 0; i < 8; i++) points.push({ x: 380 + Math.random() * 220, y: 90 + Math.random() * 260, cls: 1 });
-      lastQuery = null; lastNeighbors = [];
-      info.textContent = "Seeded. Try classify mode.";
-      draw();
-    });
-    draw();
-  },
-
-  perceptron_4: (mount) => {
-    const uid = `pc_${Math.random().toString(36).slice(2, 8)}`;
-    const state = { x1: 0.6, x2: 0.4, w1: 0.7, w2: -0.3, bias: -0.2 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Inputs & weights</div>
-        <div class="labRow"><label>x₁</label><input id="${uid}_x1" type="range" min="-1" max="1" step="0.05" value="${state.x1}"><span id="${uid}_vx1" class="labMono">${state.x1.toFixed(2)}</span></div>
-        <div class="labRow"><label>x₂</label><input id="${uid}_x2" type="range" min="-1" max="1" step="0.05" value="${state.x2}"><span id="${uid}_vx2" class="labMono">${state.x2.toFixed(2)}</span></div>
-        <div class="labRow"><label>w₁</label><input id="${uid}_w1" type="range" min="-2" max="2" step="0.05" value="${state.w1}"><span id="${uid}_vw1" class="labMono">${state.w1.toFixed(2)}</span></div>
-        <div class="labRow"><label>w₂</label><input id="${uid}_w2" type="range" min="-2" max="2" step="0.05" value="${state.w2}"><span id="${uid}_vw2" class="labMono">${state.w2.toFixed(2)}</span></div>
-        <div class="labRow"><label>bias</label><input id="${uid}_b" type="range" min="-2" max="2" step="0.05" value="${state.bias}"><span id="${uid}_vb" class="labMono">${state.bias.toFixed(2)}</span></div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">Live computation</div>
-        <div id="${uid}_math" class="sub labMono" style="white-space:pre-wrap"></div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-
-    const mathEl = $(uid + "_math");
-    const sigmoid = (z) => 1 / (1 + Math.exp(-z));
-
-    function compute() {
-      const z = state.x1 * state.w1 + state.x2 * state.w2 + state.bias;
-      const out = sigmoid(z);
-      return { z, out, fired: out > 0.5 };
-    }
-
-    function draw() {
-      const { z, out, fired } = compute();
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-
-      const nodeR = 30;
-      const in1 = { x: 120, y: 150, label: "x₁", val: state.x1 };
-      const in2 = { x: 120, y: 280, label: "x₂", val: state.x2 };
-      const sum = { x: 360, y: 215, label: "Σ" };
-      const act = { x: 520, y: 215, label: "σ" };
-      const outN = { x: 650, y: 215, label: fired ? "1" : "0" };
-
-      function edge(a, b, label, intensity) {
-        const alpha = 0.15 + Math.min(1, Math.abs(intensity)) * 0.65;
-        ctx.beginPath();
-        ctx.moveTo(a.x + nodeR, a.y);
-        ctx.lineTo(b.x - nodeR, b.y);
-        ctx.strokeStyle = intensity >= 0 ? `rgba(224,122,95,${alpha})` : `rgba(255,107,107,${alpha})`;
-        ctx.lineWidth = 1.5 + Math.min(1, Math.abs(intensity)) * 3;
-        ctx.stroke();
-        ctx.fillStyle = "rgba(200,195,185,.85)";
-        ctx.font = "bold 11px var(--mono)";
-        ctx.textAlign = "center";
-        ctx.fillText(label, (a.x + b.x) / 2, (a.y + b.y) / 2 - 10);
-      }
-      edge(in1, sum, `w₁=${state.w1.toFixed(2)}`, state.w1);
-      edge(in2, sum, `w₂=${state.w2.toFixed(2)}`, state.w2);
-      edge(sum, act, `z=${z.toFixed(2)}`, clamp(z / 3, -1, 1));
-      edge(act, outN, `${out.toFixed(2)}`, out);
-
-      function node(n, fill) {
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, nodeR, 0, Math.PI * 2);
-        ctx.fillStyle = fill;
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,.15)";
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 16px var(--sans)";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(n.label, n.x, n.y);
-        if (n.val !== undefined) {
-          ctx.font = "11px var(--mono)";
-          ctx.fillStyle = "rgba(200,195,185,.75)";
-          ctx.fillText(n.val.toFixed(2), n.x, n.y - nodeR - 10);
-        }
-        ctx.textBaseline = "alphabetic";
-      }
-      node(in1, "rgba(224,122,95,.18)");
-      node(in2, "rgba(224,122,95,.18)");
-      node(sum, "rgba(107,158,158,.18)");
-      node(act, "rgba(107,158,158,.25)");
-      node(outN, fired ? "rgba(107,255,184,.22)" : "rgba(255,107,107,.16)");
-
-      ctx.fillStyle = "rgba(200,195,185,.7)";
-      ctx.font = "bold 12px var(--mono)";
-      ctx.textAlign = "center";
-      ctx.fillText(`bias=${state.bias.toFixed(2)}`, sum.x, sum.y + nodeR + 20);
-
-      mathEl.textContent = `z = ${state.x1.toFixed(2)}·${state.w1.toFixed(2)} + ${state.x2.toFixed(2)}·${state.w2.toFixed(2)} + ${state.bias.toFixed(2)} = ${z.toFixed(4)}\nσ(z) = ${out.toFixed(4)}\nDecision: ${fired ? "Class 1" : "Class 0"}`;
-    }
-
-    function bind(key, elId, valId) {
-      const el = $(elId);
-      const v = $(valId);
-      el.addEventListener("input", () => {
-        state[key] = parseFloat(el.value);
-        v.textContent = state[key].toFixed(2);
-        draw();
-      });
-    }
-    bind("x1", `${uid}_x1`, `${uid}_vx1`);
-    bind("x2", `${uid}_x2`, `${uid}_vx2`);
-    bind("w1", `${uid}_w1`, `${uid}_vw1`);
-    bind("w2", `${uid}_w2`, `${uid}_vw2`);
-    bind("bias", `${uid}_b`, `${uid}_vb`);
-    draw();
-  },
-
-  dtree_4: (mount) => {
-    const uid = `dt_${Math.random().toString(36).slice(2, 8)}`;
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Tree builder</div>
-        <div class="sub">Grow splits one-by-one, then classify a random sample to see the path.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button id="${uid}_grow" class="btn primary sm" type="button">Grow</button>
-          <button id="${uid}_classify" class="btn sm" type="button">Classify sample</button>
-          <button id="${uid}_reset" class="btn ghost sm" type="button">Reset</button>
-        </div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">Info</div>
-        <div id="${uid}_info" class="sub labMono" style="white-space:pre-wrap">Click Grow to add the first split.</div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="820" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 820, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-
-    const info = $(uid + "_info");
-    const questions = [
-      { q: "Age > 30?", test: (s) => s.age > 30 },
-      { q: "Income > 50k?", test: (s) => s.income > 50 },
-      { q: "Has degree?", test: (s) => !!s.degree },
-      { q: "Experience > 5y?", test: (s) => s.exp > 5 },
-    ];
-
-    let nodes, edges, growIdx;
-    function reset() {
-      nodes = [{ id: 0, depth: 0, x: W / 2, y: 60, rule: "Root", leaf: true, label: "?" }];
-      edges = [];
-      growIdx = 0;
-      layout(); draw();
-      info.textContent = "Click Grow to add the first split.";
-    }
-    function layout() {
-      const byDepth = {};
-      nodes.forEach(n => { (byDepth[n.depth] ||= []).push(n); });
-      Object.keys(byDepth).forEach(d => {
-        const arr = byDepth[d];
-        const gap = W / (arr.length + 1);
-        arr.forEach((n, i) => { n.x = gap * (i + 1); n.y = 60 + parseInt(d, 10) * 110; });
-      });
-    }
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-
-      edges.forEach(e => {
-        const from = nodes.find(n => n.id === e.from);
-        const to = nodes.find(n => n.id === e.to);
-        if (!from || !to) return;
-        ctx.beginPath();
-        ctx.moveTo(from.x, from.y + 24);
-        ctx.lineTo(to.x, to.y - 24);
-        ctx.strokeStyle = e.label === "Yes" ? "rgba(107,255,184,.55)" : "rgba(255,107,107,.45)";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.fillStyle = e.label === "Yes" ? "rgba(107,255,184,.85)" : "rgba(255,107,107,.8)";
-        ctx.font = "bold 11px var(--sans)";
-        ctx.textAlign = "center";
-        ctx.fillText(e.label, (from.x + to.x) / 2 + (e.label === "Yes" ? -16 : 16), (from.y + to.y) / 2);
-      });
-
-      nodes.forEach(n => {
-        if (n.leaf) {
-          ctx.beginPath();
-          ctx.roundRect(n.x - 34, n.y - 20, 68, 40, 12);
-          ctx.fillStyle =
-            n.label === "Approve" ? "rgba(107,255,184,.18)" :
-            n.label === "Reject" ? "rgba(255,107,107,.16)" :
-            "rgba(107,158,158,.16)";
-          ctx.fill();
-          ctx.strokeStyle = "rgba(255,255,255,.12)";
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          ctx.fillStyle = "#fff";
-          ctx.font = "bold 12px var(--sans)";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(n.label, n.x, n.y);
-          ctx.textBaseline = "alphabetic";
-        } else {
-          ctx.beginPath();
-          ctx.arc(n.x, n.y, 24, 0, Math.PI * 2);
-          ctx.fillStyle = "rgba(224,122,95,.15)";
-          ctx.fill();
-          ctx.strokeStyle = "rgba(224,122,95,.35)";
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          ctx.fillStyle = "#fff";
-          ctx.font = "bold 10px var(--sans)";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(n.rule, n.x, n.y);
-          ctx.textBaseline = "alphabetic";
-        }
-      });
-    }
-
-    function grow() {
-      if (growIdx >= questions.length) { info.textContent = "Tree is fully grown."; return; }
-      const leaves = nodes.filter(n => n.leaf);
-      if (!leaves.length) return;
-      const target = leaves[0];
-      const q = questions[growIdx++];
-      target.leaf = false;
-      target.rule = q.q;
-      const yesId = nodes.length;
-      const noId = nodes.length + 1;
-      nodes.push({ id: yesId, depth: target.depth + 1, x: 0, y: 0, leaf: true, label: growIdx >= questions.length ? "Approve" : "?" });
-      nodes.push({ id: noId, depth: target.depth + 1, x: 0, y: 0, leaf: true, label: growIdx >= questions.length - 1 ? "Reject" : "?" });
-      edges.push({ from: target.id, to: yesId, label: "Yes" });
-      edges.push({ from: target.id, to: noId, label: "No" });
-      layout(); draw();
-      info.textContent = `Added split: ${q.q}`;
-    }
-
-    function classify() {
-      if (growIdx === 0) { info.textContent = "Grow the tree first."; return; }
-      const sample = {
-        age: Math.round(Math.random() * 50 + 18),
-        income: Math.round(Math.random() * 80 + 20),
-        degree: Math.random() > 0.5,
-        exp: Math.round(Math.random() * 15),
-      };
-      let path = `Sample: age=${sample.age}, income=${sample.income}k, degree=${sample.degree ? "yes" : "no"}, exp=${sample.exp}y\nPath: `;
-      let nodeId = 0;
-      for (let i = 0; i < growIdx; i++) {
-        const n = nodes.find(x => x.id === nodeId);
-        if (!n || n.leaf) break;
-        const yes = questions[i].test(sample);
-        path += `${n.rule} → ${yes ? "Yes" : "No"} → `;
-        const edge = edges.find(e => e.from === nodeId && e.label === (yes ? "Yes" : "No"));
-        if (!edge) break;
-        nodeId = edge.to;
-      }
-      const final = nodes.find(x => x.id === nodeId);
-      path += final ? final.label : "?";
-      info.textContent = path;
-    }
-
-    $(uid + "_grow").addEventListener("click", grow);
-    $(uid + "_classify").addEventListener("click", classify);
-    $(uid + "_reset").addEventListener("click", reset);
-    reset();
-  },
-
-  // Remaining topic visualizers (minimum viable interaction each)
-  logreg_4: (mount) => {
-    const uid = `lg_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { w: 2.0, b: -1.0, thr: 0.5 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Sigmoid classifier</div>
-        <div class="labRow"><label>w</label><input id="${uid}_w" type="range" min="-6" max="6" step="0.1" value="${st.w}"><span id="${uid}_vw" class="labMono">${st.w.toFixed(1)}</span></div>
-        <div class="labRow"><label>b</label><input id="${uid}_b" type="range" min="-6" max="6" step="0.1" value="${st.b}"><span id="${uid}_vb" class="labMono">${st.b.toFixed(1)}</span></div>
-        <div class="labRow"><label>threshold</label><input id="${uid}_t" type="range" min="0.1" max="0.9" step="0.05" value="${st.thr}"><span id="${uid}_vt" class="labMono">${st.thr.toFixed(2)}</span></div>
-        <div class="sub">This is 1D logistic regression: \(p=\\sigma(wx+b)\). Move sliders and watch the curve + decision point.</div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-    const sig = (z) => 1 / (1 + Math.exp(-z));
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-      // axes
-      ctx.strokeStyle = "rgba(255,255,255,.12)";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(60, H - 60); ctx.lineTo(W - 40, H - 60); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(60, H - 60); ctx.lineTo(60, 40); ctx.stroke();
-      ctx.fillStyle = "rgba(200,195,185,.65)";
-      ctx.font = "12px var(--mono)";
-      ctx.fillText("x", W - 50, H - 40);
-      ctx.fillText("p", 42, 50);
-
-      // curve
-      ctx.beginPath();
-      for (let i = 0; i <= 240; i++) {
-        const x = -6 + (12 * i) / 240;
-        const p = sig(st.w * x + st.b);
-        const px = 60 + ((x + 6) / 12) * (W - 120);
-        const py = (H - 60) - p * (H - 120);
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.strokeStyle = "rgba(224,122,95,.9)";
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-
-      // threshold line
-      const thY = (H - 60) - st.thr * (H - 120);
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath(); ctx.moveTo(60, thY); ctx.lineTo(W - 40, thY); ctx.strokeStyle = "rgba(107,158,158,.55)"; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = "rgba(200,195,185,.75)";
-      ctx.fillText(`threshold=${st.thr.toFixed(2)}`, 70, thY - 8);
-
-      // decision boundary at p=0.5 -> wx+b=0 -> x=-b/w
-      const x0 = Math.abs(st.w) < 1e-6 ? 0 : -st.b / st.w;
-      const px0 = 60 + ((clamp(x0, -6, 6) + 6) / 12) * (W - 120);
-      ctx.beginPath();
-      ctx.moveTo(px0, H - 60);
-      ctx.lineTo(px0, 40);
-      ctx.strokeStyle = "rgba(255,255,255,.18)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle = "rgba(200,195,185,.75)";
-      ctx.fillText(`boundary x≈${x0.toFixed(2)}`, px0 + 8, 54);
-    }
-
-    function bind(id, key, fmt) {
-      const el = $(id);
-      const v = $(id.replace(/_.$/, "_v" + key[0])); // not used
-    }
-    const wEl = $(uid + "_w"), bEl = $(uid + "_b"), tEl = $(uid + "_t");
-    const vw = $(uid + "_vw"), vb = $(uid + "_vb"), vt = $(uid + "_vt");
-    wEl.addEventListener("input", () => { st.w = parseFloat(wEl.value); vw.textContent = st.w.toFixed(1); draw(); });
-    bEl.addEventListener("input", () => { st.b = parseFloat(bEl.value); vb.textContent = st.b.toFixed(1); draw(); });
-    tEl.addEventListener("input", () => { st.thr = parseFloat(tEl.value); vt.textContent = st.thr.toFixed(2); draw(); });
-    draw();
-  },
-
-  nn_4: (mount) => {
-    // Tiny forward-pass demo with random weights
-    const uid = `nn_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { in1: 0.2, in2: 0.8 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Inputs</div>
-        <div class="labRow"><label>x₁</label><input id="${uid}_i1" type="range" min="0" max="1" step="0.01" value="${st.in1}"><span id="${uid}_vi1" class="labMono">${st.in1.toFixed(2)}</span></div>
-        <div class="labRow"><label>x₂</label><input id="${uid}_i2" type="range" min="0" max="1" step="0.01" value="${st.in2}"><span id="${uid}_vi2" class="labMono">${st.in2.toFixed(2)}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button id="${uid}_rand" class="btn primary sm" type="button">Randomize weights</button>
-        </div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">Output</div>
-        <div id="${uid}_out" class="sub labMono" style="white-space:pre-wrap"></div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-    const outEl = $(uid + "_out");
-    const sig = (z) => 1 / (1 + Math.exp(-z));
-
-    let w = { h11: Math.random() * 2 - 1, h12: Math.random() * 2 - 1, h21: Math.random() * 2 - 1, h22: Math.random() * 2 - 1, o1: Math.random() * 2 - 1, o2: Math.random() * 2 - 1, b1: 0.2, b2: -0.1, bo: 0.1 };
-    function forward() {
-      const h1 = sig(st.in1 * w.h11 + st.in2 * w.h21 + w.b1);
-      const h2 = sig(st.in1 * w.h12 + st.in2 * w.h22 + w.b2);
-      const o = sig(h1 * w.o1 + h2 * w.o2 + w.bo);
-      return { h1, h2, o };
-    }
-    function draw() {
-      const { h1, h2, o } = forward();
-      outEl.textContent = `Hidden: [${h1.toFixed(3)}, ${h2.toFixed(3)}]\nOutput: ${o.toFixed(4)}`;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-      const nodes = {
-        i1: { x: 140, y: 140, a: st.in1, l: "x₁" },
-        i2: { x: 140, y: 280, a: st.in2, l: "x₂" },
-        h1: { x: 360, y: 170, a: h1, l: "h₁" },
-        h2: { x: 360, y: 250, a: h2, l: "h₂" },
-        o: { x: 580, y: 210, a: o, l: "ŷ" },
-      };
-      function edge(a, b, ww) {
-        ctx.beginPath(); ctx.moveTo(a.x + 22, a.y); ctx.lineTo(b.x - 22, b.y);
-        ctx.strokeStyle = ww >= 0 ? `rgba(224,122,95,${0.15 + Math.abs(ww) * 0.35})` : `rgba(255,107,107,${0.15 + Math.abs(ww) * 0.35})`;
-        ctx.lineWidth = 1 + Math.abs(ww) * 2;
-        ctx.stroke();
-      }
-      edge(nodes.i1, nodes.h1, w.h11); edge(nodes.i2, nodes.h1, w.h21);
-      edge(nodes.i1, nodes.h2, w.h12); edge(nodes.i2, nodes.h2, w.h22);
-      edge(nodes.h1, nodes.o, w.o1); edge(nodes.h2, nodes.o, w.o2);
-      function node(n) {
-        ctx.beginPath(); ctx.arc(n.x, n.y, 22, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(107,158,158,${0.12 + n.a * 0.45})`;
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,.15)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = "#fff"; ctx.font = "bold 12px var(--mono)";
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(n.a.toFixed(2), n.x, n.y);
-        ctx.textBaseline = "alphabetic";
-        ctx.fillStyle = "rgba(200,195,185,.75)"; ctx.font = "bold 12px var(--sans)";
-        ctx.fillText(n.l, n.x, n.y - 32);
-      }
-      Object.values(nodes).forEach(node);
-    }
-    function bind(id, key, vid) {
-      const el = $(id), v = $(vid);
-      el.addEventListener("input", () => { st[key] = parseFloat(el.value); v.textContent = st[key].toFixed(2); draw(); });
-    }
-    bind(uid + "_i1", "in1", uid + "_vi1");
-    bind(uid + "_i2", "in2", uid + "_vi2");
-    $(uid + "_rand").addEventListener("click", () => { w = { h11: Math.random() * 2 - 1, h12: Math.random() * 2 - 1, h21: Math.random() * 2 - 1, h22: Math.random() * 2 - 1, o1: Math.random() * 2 - 1, o2: Math.random() * 2 - 1, b1: Math.random() * 0.6 - 0.3, b2: Math.random() * 0.6 - 0.3, bo: Math.random() * 0.6 - 0.3 }; draw(); });
-    draw();
-  },
-
-  rf_4: (mount) => {
-    const uid = `rf_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { x: 0.5, n: 7 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Forest vote (toy)</div>
-        <div class="labRow"><label>trees</label><input id="${uid}_n" type="range" min="3" max="15" step="2" value="${st.n}"><span id="${uid}_vn" class="labMono">${st.n}</span></div>
-        <div class="labRow"><label>x</label><input id="${uid}_x" type="range" min="0" max="1" step="0.01" value="${st.x}"><span id="${uid}_vx" class="labMono">${st.x.toFixed(2)}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button id="${uid}_regen" class="btn primary sm" type="button">Regenerate trees</button>
-        </div>
-        <div class="sub">Each tree is a stump: “x &gt; threshold?”. The forest votes.</div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">Result</div><div id="${uid}_info" class="sub"></div></div>
-    `;
-    mount.viz.innerHTML = `<div id="${uid}_bars"></div>`;
-    const bars = $(uid + "_bars");
-    const info = $(uid + "_info");
-    let thresholds = [];
-    function regen() {
-      thresholds = Array.from({ length: st.n }, () => Math.random());
-      render();
-    }
-    function render() {
-      const yes = thresholds.filter(t => st.x > t).length;
-      const no = thresholds.length - yes;
-      const cls = yes >= no ? "Class 1" : "Class 0";
-      info.innerHTML = `Votes: <b>${yes}</b> yes vs <b>${no}</b> no → <b>${cls}</b>`;
-      bars.innerHTML = `
-        <div class="panel">
-          <div class="panelTitle">Tree votes</div>
-          <div style="display:grid;gap:8px;margin-top:10px">
-            ${thresholds.map((t, i) => {
-              const v = st.x > t;
-              return `<div class="sub" style="display:flex;align-items:center;gap:10px">
-                <span class="labMono" style="width:52px">T${i + 1}</span>
-                <div style="flex:1;height:10px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
-                  <div style="width:${Math.round(t * 100)}%;height:100%;background:rgba(107,158,158,.25)"></div>
-                </div>
-                <span class="pill ${v ? "pillGlow" : ""}" style="margin:0">${v ? "Yes" : "No"}</span>
-              </div>`;
-            }).join("")}
-          </div>
-        </div>
-      `;
-    }
-    const nEl = $(uid + "_n"), xEl = $(uid + "_x"), vn = $(uid + "_vn"), vx = $(uid + "_vx");
-    nEl.addEventListener("input", () => { st.n = parseInt(nEl.value, 10); vn.textContent = st.n; regen(); });
-    xEl.addEventListener("input", () => { st.x = parseFloat(xEl.value); vx.textContent = st.x.toFixed(2); render(); });
-    $(uid + "_regen").addEventListener("click", regen);
-    regen();
-  },
-
-  svm_4: (mount) => {
-    const uid = `svm_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { angle: 20, offset: 0.0, margin: 0.25 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Max-margin separator (toy)</div>
-        <div class="labRow"><label>angle</label><input id="${uid}_a" type="range" min="-80" max="80" step="1" value="${st.angle}"><span id="${uid}_va" class="labMono">${st.angle}°</span></div>
-        <div class="labRow"><label>offset</label><input id="${uid}_o" type="range" min="-0.6" max="0.6" step="0.01" value="${st.offset}"><span id="${uid}_vo" class="labMono">${st.offset.toFixed(2)}</span></div>
-        <div class="labRow"><label>margin</label><input id="${uid}_m" type="range" min="0.05" max="0.5" step="0.01" value="${st.margin}"><span id="${uid}_vm" class="labMono">${st.margin.toFixed(2)}</span></div>
-        <div class="sub">Rotate/shift the hyperplane and see which points violate the margin.</div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">Stats</div><div id="${uid}_info" class="sub"></div></div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-    const info = $(uid + "_info");
-    const pts = [];
-    for (let i = 0; i < 18; i++) pts.push({ x: 0.25 + Math.random() * 0.18, y: 0.25 + Math.random() * 0.5, cls: 0 });
-    for (let i = 0; i < 18; i++) pts.push({ x: 0.58 + Math.random() * 0.18, y: 0.25 + Math.random() * 0.5, cls: 1 });
-    function sign(p) {
-      const th = (st.angle * Math.PI) / 180;
-      const nx = Math.cos(th), ny = Math.sin(th);
-      const d = (p.x - 0.5) * nx + (p.y - 0.5) * ny + st.offset;
-      return d;
-    }
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-      const th = (st.angle * Math.PI) / 180;
-      const nx = Math.cos(th), ny = Math.sin(th);
-
-      // draw decision line and margins in normalized space
-      function lineAt(c, alpha) {
-        // points satisfying (x-0.5)nx + (y-0.5)ny + offset = c
-        const ptsL = [];
-        for (let t = 0; t <= 1; t += 0.02) {
-          // solve for y given x=t: (t-0.5)nx + (y-0.5)ny + offset = c
-          if (Math.abs(ny) < 1e-6) continue;
-          const y = 0.5 + (c - st.offset - (t - 0.5) * nx) / ny;
-          if (y >= 0 && y <= 1) ptsL.push({ x: t, y });
-        }
-        if (ptsL.length < 2) return;
-        ctx.beginPath();
-        ptsL.forEach((p, i) => {
-          const px = 70 + p.x * (W - 140);
-          const py = 50 + p.y * (H - 100);
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        });
-        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-      lineAt(0, 0.22);
-      ctx.setLineDash([6, 6]);
-      lineAt(st.margin, 0.14);
-      lineAt(-st.margin, 0.14);
-      ctx.setLineDash([]);
-
-      let viol = 0;
-      pts.forEach(p => {
-        const d = sign(p);
-        const y = p.cls === 0 ? -1 : 1;
-        const m = y * d;
-        const bad = m < st.margin;
-        if (bad) viol++;
-        const px = 70 + p.x * (W - 140);
-        const py = 50 + p.y * (H - 100);
-        ctx.beginPath();
-        ctx.arc(px, py, bad ? 8 : 6, 0, Math.PI * 2);
-        ctx.fillStyle = p.cls === 0 ? "rgba(224,122,95,.85)" : "rgba(107,255,184,.75)";
-        ctx.fill();
-        ctx.strokeStyle = bad ? "rgba(255,107,107,.9)" : "rgba(255,255,255,.18)";
-        ctx.lineWidth = bad ? 2 : 1;
-        ctx.stroke();
-      });
-      info.innerHTML = `Margin violations: <b>${viol}</b> / ${pts.length}`;
-    }
-    const aEl = $(uid + "_a"), oEl = $(uid + "_o"), mEl = $(uid + "_m");
-    const va = $(uid + "_va"), vo = $(uid + "_vo"), vm = $(uid + "_vm");
-    aEl.addEventListener("input", () => { st.angle = parseFloat(aEl.value); va.textContent = `${st.angle}°`; draw(); });
-    oEl.addEventListener("input", () => { st.offset = parseFloat(oEl.value); vo.textContent = st.offset.toFixed(2); draw(); });
-    mEl.addEventListener("input", () => { st.margin = parseFloat(mEl.value); vm.textContent = st.margin.toFixed(2); draw(); });
-    draw();
-  },
-
-  kmeans_4: (mount) => {
-    const uid = `km_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { k: 3 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">K-Means (stepper)</div>
-        <div class="sub">Click to place centroids (up to K). Then step: assign → update.</div>
-        <div class="labRow"><label>K</label><input id="${uid}_k" type="range" min="2" max="5" step="1" value="${st.k}"><span id="${uid}_vk" class="labMono">${st.k}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button id="${uid}_assign" class="btn primary sm" type="button">Assign</button>
-          <button id="${uid}_update" class="btn sm" type="button">Update</button>
-          <button id="${uid}_reset" class="btn ghost sm" type="button">Reset</button>
-        </div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">Inertia</div><div id="${uid}_info" class="sub labMono"></div></div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-
-    const colors = ["rgba(224,122,95,.85)", "rgba(107,255,184,.75)", "rgba(107,158,158,.85)", "rgba(255,107,107,.85)", "rgba(255,210,107,.85)"];
-    let points = [];
-    let centroids = [];
-    const info = $(uid + "_info");
-    function gen() {
-      points = [];
-      for (let i = 0; i < 45; i++) points.push({ x: 70 + Math.random() * (W - 140), y: 60 + Math.random() * (H - 120), c: -1 });
-    }
-    function assign() {
-      points.forEach(p => {
-        if (!centroids.length) { p.c = -1; return; }
-        let best = 0, bd = 1e9;
-        centroids.forEach((c, i) => {
-          const d = (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
-          if (d < bd) { bd = d; best = i; }
-        });
-        p.c = best;
-      });
-      draw();
-    }
-    function update() {
-      if (!centroids.length) return;
-      const sums = centroids.map(() => ({ x: 0, y: 0, n: 0 }));
-      points.forEach(p => {
-        if (p.c < 0) return;
-        const s = sums[p.c];
-        s.x += p.x; s.y += p.y; s.n++;
-      });
-      centroids = centroids.map((c, i) => sums[i].n ? ({ x: sums[i].x / sums[i].n, y: sums[i].y / sums[i].n }) : c);
-      draw();
-    }
-    function inertia() {
-      let s = 0;
-      points.forEach(p => {
-        if (p.c < 0 || !centroids[p.c]) return;
-        s += (p.x - centroids[p.c].x) ** 2 + (p.y - centroids[p.c].y) ** 2;
-      });
-      return s;
-    }
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-      points.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = p.c < 0 ? "rgba(200,195,185,.35)" : colors[p.c % colors.length];
-        ctx.fill();
-      });
-      centroids.forEach((c, i) => {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.fill();
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
-      info.textContent = `inertia=${Math.round(inertia())} | centroids=${centroids.length}/${st.k}`;
-    }
-    canvas.addEventListener("click", (e) => {
-      if (centroids.length >= st.k) return;
-      const r = canvas.getBoundingClientRect();
-      centroids.push({ x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) });
-      draw();
-    });
-    $(uid + "_assign").addEventListener("click", assign);
-    $(uid + "_update").addEventListener("click", update);
-    $(uid + "_reset").addEventListener("click", () => { centroids = []; gen(); draw(); });
-    const kEl = $(uid + "_k"), vk = $(uid + "_vk");
-    kEl.addEventListener("input", () => { st.k = parseInt(kEl.value, 10); vk.textContent = st.k; centroids = []; gen(); draw(); });
-    gen(); draw();
-  },
-
-  pca_4: (mount) => {
-    const uid = `pca_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { ang: 30 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">PCA intuition (2D)</div>
-        <div class="labRow"><label>axis angle</label><input id="${uid}_a" type="range" min="0" max="180" step="1" value="${st.ang}"><span id="${uid}_va" class="labMono">${st.ang}°</span></div>
-        <div class="sub">Rotate the axis and see how much variance you capture along that direction.</div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">Variance captured</div><div id="${uid}_info" class="sub labMono"></div></div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-    const info = $(uid + "_info");
-    const pts = Array.from({ length: 60 }, () => {
-      // elongated cloud
-      const t = (Math.random() * 2 - 1) * 1.4;
-      const n = (Math.random() * 2 - 1) * 0.35;
-      const x = 0.5 + 0.28 * t + 0.08 * n;
-      const y = 0.5 + 0.10 * t - 0.20 * n;
-      return { x, y };
-    });
-    function varianceAlong(theta) {
-      const ux = Math.cos(theta), uy = Math.sin(theta);
-      const proj = pts.map(p => (p.x - 0.5) * ux + (p.y - 0.5) * uy);
-      const mean = proj.reduce((a, b) => a + b, 0) / proj.length;
-      return proj.reduce((s, v) => s + (v - mean) ** 2, 0) / proj.length;
-    }
-    function draw() {
-      const th = (st.ang * Math.PI) / 180;
-      const v = varianceAlong(th);
-      const v90 = varianceAlong(th + Math.PI / 2);
-      const ratio = v / (v + v90);
-      info.textContent = `var_axis=${v.toFixed(4)} | share=${(ratio * 100).toFixed(1)}%`;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-      const ox = W / 2, oy = H / 2;
-      pts.forEach(p => {
-        const x = ox + (p.x - 0.5) * 520;
-        const y = oy + (p.y - 0.5) * 320;
-        ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(107,158,158,.85)";
-        ctx.fill();
-      });
-      // axis line
-      const ux = Math.cos(th), uy = Math.sin(th);
-      ctx.beginPath();
-      ctx.moveTo(ox - ux * 260, oy - uy * 260);
-      ctx.lineTo(ox + ux * 260, oy + uy * 260);
-      ctx.strokeStyle = "rgba(224,122,95,.9)";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-    }
-    const aEl = $(uid + "_a"), va = $(uid + "_va");
-    aEl.addEventListener("input", () => { st.ang = parseFloat(aEl.value); va.textContent = `${st.ang}°`; draw(); });
-    draw();
-  },
-
-  naive_4: (mount) => {
-    const uid = `nb_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { pSpam: 0.4, pWordSpam: 0.7, pWordHam: 0.1 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Naive Bayes posterior</div>
-        <div class="labRow"><label>P(spam)</label><input id="${uid}_ps" type="range" min="0.05" max="0.95" step="0.01" value="${st.pSpam}"><span id="${uid}_vps" class="labMono">${st.pSpam.toFixed(2)}</span></div>
-        <div class="labRow"><label>P(word|spam)</label><input id="${uid}_pws" type="range" min="0.01" max="0.99" step="0.01" value="${st.pWordSpam}"><span id="${uid}_vpws" class="labMono">${st.pWordSpam.toFixed(2)}</span></div>
-        <div class="labRow"><label>P(word|ham)</label><input id="${uid}_pwh" type="range" min="0.01" max="0.99" step="0.01" value="${st.pWordHam}"><span id="${uid}_vpwh" class="labMono">${st.pWordHam.toFixed(2)}</span></div>
-        <div class="sub">Compute \(P(spam|word) \\propto P(word|spam)P(spam)\).</div>
-      </div>
-    `;
-    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">Posterior</div><div id="${uid}_out" class="sub labMono" style="white-space:pre-wrap;margin-top:8px"></div><div style="display:grid;gap:8px;margin-top:10px"><div style="height:14px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)"><div id="${uid}_barS" style="height:100%"></div></div><div style="height:14px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)"><div id="${uid}_barH" style="height:100%"></div></div></div><div class="sub" style="margin-top:8px">Top bar = spam posterior, bottom = ham posterior.</div></div>`;
-    const out = $(uid + "_out");
-    const barS = $(uid + "_barS");
-    const barH = $(uid + "_barH");
-    function render() {
-      const pHam = 1 - st.pSpam;
-      const numS = st.pWordSpam * st.pSpam;
-      const numH = st.pWordHam * pHam;
-      const denom = numS + numH;
-      const postS = denom ? numS / denom : 0.5;
-      const postH = 1 - postS;
-      out.textContent = `P(spam|word) = ${postS.toFixed(4)}\nP(ham|word)  = ${postH.toFixed(4)}`;
-      barS.style.width = `${Math.round(postS * 100)}%`;
-      barS.style.background = "linear-gradient(90deg, var(--coral), var(--teal))";
-      barH.style.width = `${Math.round(postH * 100)}%`;
-      barH.style.background = "linear-gradient(90deg, rgba(107,158,158,.7), rgba(224,122,95,.35))";
-    }
-    const ps = $(uid + "_ps"), pws = $(uid + "_pws"), pwh = $(uid + "_pwh");
-    const vps = $(uid + "_vps"), vpws = $(uid + "_vpws"), vpwh = $(uid + "_vpwh");
-    ps.addEventListener("input", () => { st.pSpam = parseFloat(ps.value); vps.textContent = st.pSpam.toFixed(2); render(); });
-    pws.addEventListener("input", () => { st.pWordSpam = parseFloat(pws.value); vpws.textContent = st.pWordSpam.toFixed(2); render(); });
-    pwh.addEventListener("input", () => { st.pWordHam = parseFloat(pwh.value); vpwh.textContent = st.pWordHam.toFixed(2); render(); });
-    render();
-  },
-
-  gradient_4: (mount) => {
-    const uid = `gd_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { w: -3.0, lr: 0.2, steps: 0 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Gradient descent (1D)</div>
-        <div class="labRow"><label>learning rate</label><input id="${uid}_lr" type="range" min="0.01" max="0.6" step="0.01" value="${st.lr}"><span id="${uid}_vlr" class="labMono">${st.lr.toFixed(2)}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button id="${uid}_step" class="btn primary sm" type="button">Step</button>
-          <button id="${uid}_run" class="btn sm" type="button">Run 10</button>
-          <button id="${uid}_reset" class="btn ghost sm" type="button">Reset</button>
-        </div>
-        <div class="sub">We minimize \(L(w)=(w-2)^2\\). Gradient is \(dL/dw=2(w-2)\\).</div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">State</div><div id="${uid}_info" class="sub labMono" style="white-space:pre-wrap"></div></div>
-    `;
-    mount.viz.innerHTML = `<canvas id="${uid}_c" class="labCanvas" width="720" height="420"></canvas>`;
-    const canvas = $(uid + "_c");
-    const ctx = canvas.getContext("2d");
-    const W = 720, H = 420;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr; canvas.height = H * dpr;
-    canvas.style.width = "100%"; canvas.style.height = "auto";
-    ctx.scale(dpr, dpr);
-    const info = $(uid + "_info");
-    function loss(w) { return (w - 2) ** 2; }
-    function grad(w) { return 2 * (w - 2); }
-    function draw() {
-      info.textContent = `w=${st.w.toFixed(4)}\nL=${loss(st.w).toFixed(4)}\nsteps=${st.steps}`;
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(42,42,60,.55)";
-      ctx.fillRect(0, 0, W, H);
-      // plot curve for w in [-6, 6]
-      const x0 = 70, y0 = H - 70, pw = W - 140, ph = H - 140;
-      let maxL = 0;
-      for (let i = 0; i <= 240; i++) { const wv = -6 + (12 * i) / 240; maxL = Math.max(maxL, loss(wv)); }
-      ctx.beginPath();
-      for (let i = 0; i <= 240; i++) {
-        const wv = -6 + (12 * i) / 240;
-        const L = loss(wv);
-        const px = x0 + ((wv + 6) / 12) * pw;
-        const py = y0 - (L / maxL) * ph;
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.strokeStyle = "rgba(224,122,95,.9)";
-      ctx.lineWidth = 2.2;
-      ctx.stroke();
-      // current point
-      const px = x0 + ((st.w + 6) / 12) * pw;
-      const py = y0 - (loss(st.w) / maxL) * ph;
-      ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(107,255,184,.75)";
-      ctx.fill();
-      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke();
-    }
-    function step() {
-      st.w = st.w - st.lr * grad(st.w);
-      st.steps++;
-      draw();
-    }
-    const lrEl = $(uid + "_lr"), vlr = $(uid + "_vlr");
-    lrEl.addEventListener("input", () => { st.lr = parseFloat(lrEl.value); vlr.textContent = st.lr.toFixed(2); });
-    $(uid + "_step").addEventListener("click", step);
-    $(uid + "_run").addEventListener("click", () => { for (let i = 0; i < 10; i++) step(); });
-    $(uid + "_reset").addEventListener("click", () => { st.w = -3; st.steps = 0; draw(); });
-    draw();
-  },
-
-  cnn_4: (mount) => {
-    const uid = `cnn_${Math.random().toString(36).slice(2, 8)}`;
-    // 5x5 image + 3x3 filter -> 3x3 output
-    let img = Array.from({ length: 25 }, () => 0);
-    let ker = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-    function cellHtml(id, v) {
-      const a = clamp((v + 2) / 6, 0, 1);
-      return `<div data-c="${id}" style="aspect-ratio:1;border-radius:6px;box-shadow:var(--neo-sm-in);background:rgba(224,122,95,${0.15 + a * 0.6});display:grid;place-items:center;color:rgba(0,0,0,.65);font-family:var(--mono);font-size:12px;cursor:pointer">${v}</div>`;
-    }
-    function gridHtml(prefix, arr, n, editable) {
-      return `<div class="vizGrid" style="grid-template-columns:repeat(${n},1fr);gap:8px;background:transparent">
-        ${arr.map((v, i) => editable ? cellHtml(prefix + "_" + i, v) : `<div style="aspect-ratio:1;border-radius:6px;box-shadow:var(--neo-sm-in);background:rgba(107,158,158,${0.12 + clamp((v + 10) / 20, 0, 1) * 0.5});display:grid;place-items:center;color:rgba(0,0,0,.65);font-family:var(--mono);font-size:12px">${v.toFixed ? v.toFixed(0) : v}</div>`).join("")}
-      </div>`;
-    }
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">5×5 image</div>
-        <div class="sub">Click cells to toggle 0/1.</div>
-        <div id="${uid}_img" style="margin-top:10px"></div>
-      </div>
-      <div class="labCard">
-        <div class="labCardTitle">3×3 filter</div>
-        <div class="sub">Click to cycle -1 → 0 → 1.</div>
-        <div id="${uid}_ker" style="margin-top:10px"></div>
-      </div>
-    `;
-    mount.viz.innerHTML = `
-      <div class="panel">
-        <div class="panelTitle">Convolution output (3×3)</div>
-        <div id="${uid}_out" style="margin-top:10px"></div>
-        <div class="sub" style="margin-top:10px">Try making a vertical edge in the image, then use an edge-detect filter.</div>
-      </div>
-    `;
-    const imgEl = $(uid + "_img");
-    const kerEl = $(uid + "_ker");
-    const outEl = $(uid + "_out");
-    function conv() {
-      const out = [];
-      for (let y = 0; y < 3; y++) {
-        for (let x = 0; x < 3; x++) {
-          let s = 0;
-          for (let ky = 0; ky < 3; ky++) for (let kx = 0; kx < 3; kx++) {
-            const iv = img[(y + ky) * 5 + (x + kx)];
-            const kv = ker[ky * 3 + kx];
-            s += iv * kv;
-          }
-          out.push(s);
-        }
-      }
-      return out;
-    }
-    function render() {
-      imgEl.innerHTML = gridHtml(uid + "img", img, 5, true);
-      kerEl.innerHTML = gridHtml(uid + "ker", ker, 3, true);
-      const out = conv();
-      outEl.innerHTML = gridHtml(uid + "out", out, 3, false);
-      imgEl.querySelectorAll("[data-c]").forEach(n => n.addEventListener("click", () => {
-        const i = parseInt(n.dataset.c.split("_").pop(), 10);
-        img[i] = img[i] ? 0 : 1;
-        render();
-      }));
-      kerEl.querySelectorAll("[data-c]").forEach(n => n.addEventListener("click", () => {
-        const i = parseInt(n.dataset.c.split("_").pop(), 10);
-        ker[i] = ker[i] === -1 ? 0 : ker[i] === 0 ? 1 : -1;
-        render();
-      }));
-    }
-    render();
-  },
-
-  rnn_4: (mount) => {
-    const uid = `rnn_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { wIn: 0.9, wState: 0.7, steps: 6 };
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">RNN state update</div>
-        <div class="labRow"><label>w_in</label><input id="${uid}_wi" type="range" min="-1.5" max="1.5" step="0.05" value="${st.wIn}"><span id="${uid}_vwi" class="labMono">${st.wIn.toFixed(2)}</span></div>
-        <div class="labRow"><label>w_state</label><input id="${uid}_ws" type="range" min="-1.5" max="1.5" step="0.05" value="${st.wState}"><span id="${uid}_vws" class="labMono">${st.wState.toFixed(2)}</span></div>
-        <div class="labRow"><label>length</label><input id="${uid}_len" type="range" min="3" max="12" step="1" value="${st.steps}"><span id="${uid}_vlen" class="labMono">${st.steps}</span></div>
-        <div class="sub">State: \(h_t=\\tanh(w_{in}x_t+w_{state}h_{t-1})\\).</div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">Sequence</div><div id="${uid}_seq" class="sub labMono"></div></div>
-    `;
-    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">State over time</div><div id="${uid}_bars" style="margin-top:10px"></div></div>`;
-    const seqEl = $(uid + "_seq");
-    const bars = $(uid + "_bars");
-    let xs = [];
-    function regen() { xs = Array.from({ length: st.steps }, () => (Math.random() * 2 - 1)); }
-    function compute() {
-      const hs = [];
-      let h = 0;
-      xs.forEach(x => { h = Math.tanh(st.wIn * x + st.wState * h); hs.push(h); });
-      return hs;
-    }
-    function render() {
-      seqEl.textContent = `x: [${xs.map(v => v.toFixed(2)).join(", ")}]`;
-      const hs = compute();
-      bars.innerHTML = hs.map((h, i) => {
-        const w = Math.round(Math.abs(h) * 100);
-        const col = h >= 0 ? "linear-gradient(90deg, var(--teal), var(--coral))" : "linear-gradient(90deg, rgba(255,107,107,.65), rgba(224,122,95,.35))";
-        return `<div class="sub" style="display:flex;align-items:center;gap:10px;margin:6px 0">
-          <span class="labMono" style="width:54px">t=${i + 1}</span>
-          <div style="flex:1;height:12px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
-            <div style="width:${w}%;height:100%;background:${col}"></div>
-          </div>
-          <span class="labMono" style="width:56px;text-align:right">${h.toFixed(2)}</span>
-        </div>`;
-      }).join("");
-    }
-    function bind(id, key, vId, fmt) {
-      const el = $(id), v = $(vId);
-      el.addEventListener("input", () => { st[key] = key === "steps" ? parseInt(el.value, 10) : parseFloat(el.value); v.textContent = fmt(st[key]); regen(); render(); });
-    }
-    bind(uid + "_wi", "wIn", uid + "_vwi", (x) => x.toFixed(2));
-    bind(uid + "_ws", "wState", uid + "_vws", (x) => x.toFixed(2));
-    bind(uid + "_len", "steps", uid + "_vlen", (x) => String(x));
-    regen(); render();
-  },
-
-  nlp_4: (mount) => {
-    const uid = `nlp_${Math.random().toString(36).slice(2, 8)}`;
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">Tokenize text</div>
-        <div class="sub">Type a sentence. We’ll tokenize + show bag-of-words counts.</div>
-        <input id="${uid}_in" type="text" value="I love AI and I love visuals" style="width:100%;padding:10px 12px;border-radius:12px;border:none;box-shadow:var(--neo-sm-in);background:var(--canvas);font-family:var(--sans)" />
-      </div>
-      <div class="labCard"><div class="labCardTitle">Tokens</div><div id="${uid}_tok"></div></div>
-    `;
-    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">Bag-of-words</div><div id="${uid}_bow" style="margin-top:10px"></div></div>`;
-    const input = $(uid + "_in");
-    const tok = $(uid + "_tok");
-    const bow = $(uid + "_bow");
-    function tokenize(s) {
-      return String(s).toLowerCase().replace(/[^a-z0-9\\s]/g, " ").split(/\\s+/).filter(Boolean);
-    }
-    function render() {
-      const ts = tokenize(input.value);
-      tok.innerHTML = ts.map(t => `<span class="vizToken">${esc(t)}</span>`).join("") || `<div class="sub">No tokens.</div>`;
-      const counts = {};
-      ts.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
-      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-      const max = Math.max(1, ...entries.map(e => e[1]));
-      bow.innerHTML = entries.map(([w, c]) => `
-        <div class="sub" style="display:flex;align-items:center;gap:10px;margin:6px 0">
-          <span class="labMono" style="width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(w)}</span>
-          <div style="flex:1;height:12px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
-            <div style="width:${Math.round((c / max) * 100)}%;height:100%;background:linear-gradient(90deg,var(--coral),var(--teal))"></div>
-          </div>
-          <span class="labMono" style="width:22px;text-align:right">${c}</span>
-        </div>
-      `).join("") || `<div class="sub">No counts.</div>`;
-    }
-    input.addEventListener("input", render);
-    render();
-  },
-
-  rl_4: (mount) => {
-    const uid = `rl_${Math.random().toString(36).slice(2, 8)}`;
-    const st = { eps: 0.3, pulls: 40 };
-    const arms = [0.3, 0.7, 0.5];
-    mount.controls.innerHTML = `
-      <div class="labCard">
-        <div class="labCardTitle">ε-greedy bandit</div>
-        <div class="labRow"><label>ε</label><input id="${uid}_e" type="range" min="0" max="1" step="0.05" value="${st.eps}"><span id="${uid}_ve" class="labMono">${st.eps.toFixed(2)}</span></div>
-        <div class="labRow"><label>pulls</label><input id="${uid}_p" type="range" min="10" max="120" step="5" value="${st.pulls}"><span id="${uid}_vp" class="labMono">${st.pulls}</span></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-          <button id="${uid}_run" class="btn primary sm" type="button">Simulate</button>
-        </div>
-        <div class="sub">Arms have true win rates: [0.3, 0.7, 0.5]. ε controls exploration.</div>
-      </div>
-      <div class="labCard"><div class="labCardTitle">Summary</div><div id="${uid}_sum" class="sub labMono" style="white-space:pre-wrap"></div></div>
-    `;
-    mount.viz.innerHTML = `<div class="panel"><div class="panelTitle">Pull counts</div><div id="${uid}_bars" style="margin-top:10px"></div></div>`;
-    const sum = $(uid + "_sum");
-    const bars = $(uid + "_bars");
-    function simulate() {
-      const q = [0, 0, 0];
-      const n = [0, 0, 0];
-      let reward = 0;
-      for (let t = 0; t < st.pulls; t++) {
-        const explore = Math.random() < st.eps;
-        let a = 0;
-        if (explore) a = Math.floor(Math.random() * 3);
-        else {
-          a = q.indexOf(Math.max(...q));
-        }
-        // pull
-        const r = Math.random() < arms[a] ? 1 : 0;
-        reward += r;
-        n[a] += 1;
-        q[a] += (r - q[a]) / n[a];
-      }
-      sum.textContent = `total_reward=${reward}\nq_est=[${q.map(x => x.toFixed(2)).join(", ")}]`;
-      const max = Math.max(1, ...n);
-      bars.innerHTML = n.map((c, i) => `
-        <div class="sub" style="display:flex;align-items:center;gap:10px;margin:8px 0">
-          <span class="labMono" style="width:60px">arm ${i + 1}</span>
-          <div style="flex:1;height:14px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in)">
-            <div style="width:${Math.round((c / max) * 100)}%;height:100%;background:linear-gradient(90deg,var(--coral),var(--teal))"></div>
-          </div>
-          <span class="labMono" style="width:36px;text-align:right">${c}</span>
-        </div>
-      `).join("");
-    }
-    const eEl = $(uid + "_e"), pEl = $(uid + "_p"), ve = $(uid + "_ve"), vp = $(uid + "_vp");
-    eEl.addEventListener("input", () => { st.eps = parseFloat(eEl.value); ve.textContent = st.eps.toFixed(2); });
-    pEl.addEventListener("input", () => { st.pulls = parseInt(pEl.value, 10); vp.textContent = st.pulls; });
-    $(uid + "_run").addEventListener("click", simulate);
-    simulate();
-  },
-};
-
 function renderLesson(topicId, subtopicId, user) {
   const root = $("v_lesson");
   const topic = TOPICS.find(t => t.id === topicId);
   const sub = topic?.subtopics.find(s => s.id === subtopicId);
   if (!topic || !sub) return;
 
-  const interactive = INTERACTIVE_LESSONS[subtopicId];
   const content = LESSON_CONTENT[subtopicId] || `<div class="concept"><h3>${esc(sub.title)}</h3><p>${esc(sub.desc)}</p><p>This topic covers an important concept in ${esc(topic.title)}. Explore the interactive visualizer and quiz to deepen your understanding.</p></div>`;
   const isDone = !!user.prog.mods[subtopicId];
 
@@ -3195,37 +1282,13 @@ function renderLesson(topicId, subtopicId, user) {
         <h2 style="margin:0">${esc(sub.title)}</h2>
       </div>
     </div>
-    <div class="lessonContent">
-      ${typeof interactive === "function"
-        ? labShell({
-            title: sub.title,
-            subtitle: topic.title,
-            controlsHtml: `<div id="labControls"></div>`,
-            vizHtml: `<div id="labViz"></div>`,
-            notesHtml: LAB_NOTES[subtopicId] || `<div class="sub"><b>Tip:</b> interact with the controls and watch the visualization update live.</div>`,
-          })
-        : content}
-    </div>
+    <div class="lessonContent">${content}</div>
     <div style="margin-top:20px;display:flex;gap:10px;align-items:center">
       ${isDone
         ? '<span class="pill pillGlow">✓ Completed</span>'
         : `<button class="btn primary" id="markDoneBtn">Mark Complete (+25 pts)</button>`}
     </div>
   `;
-
-  if (typeof interactive === "function") {
-    try {
-      const mount = { controls: $("labControls"), viz: $("labViz"), root };
-      interactive(mount, { topicId, subtopicId, topic, sub, user });
-    } catch (e) {
-      const box = document.createElement("div");
-      box.className = "errBox";
-      box.textContent = "Interactive lab failed to load. Please refresh.";
-      const host = $("labViz");
-      if (host) host.prepend(box);
-      console.error(e);
-    }
-  }
 
   if (!isDone) {
     $("markDoneBtn").addEventListener("click", () => {
@@ -4201,17 +2264,16 @@ function renderQuiz(user) {
 
   root.querySelectorAll(".quizTopic").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const topicId = btn.dataset.tid;
       const topicName = btn.dataset.tname;
       const quizArea = $("quizArea");
       quizArea.innerHTML = `<div class="panel"><div class="aiBadge" style="margin:20px auto;display:flex;width:fit-content">✨ Generating questions about ${esc(topicName)}...</div></div>`;
-      const result = await generateQuizWithFallback(topicId, topicName, user.level || "beginner", 5);
-      const qs = result.qs;
+      const qs = await generateAIQuiz(topicName, user.level || "beginner", 5);
+      if (!qs || !Array.isArray(qs) || qs.length === 0) { renderFallbackQuiz(user, root); return; }
       quizArea.innerHTML = `
         <form id="aiQuizForm" class="panel">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
             <div class="panelTitle">Quiz: ${esc(topicName)}</div>
-            <span class="aiBadge">${result.source === "ai" ? "✨ AI-generated" : "Built-in"}</span>
+            <span class="aiBadge">✨ AI-generated</span>
           </div>
           ${qs.map((q, i) => `
             <div style="padding:12px 0;border-bottom:1px solid var(--light-border)">
@@ -4235,7 +2297,7 @@ function renderQuiz(user) {
         let sc = 0;
         qs.forEach((q, i) => { const a = fd.get(`aq${i}`); const ok = a === q.ans; if (ok) sc++; const w = $(`aqw_${i}`); w.innerHTML = `${ok ? "✅ Correct!" : "❌ Not quite."} ${esc(q.why || "")}`; show(w); });
         const pts = sc * 20;
-        u = addPts(u, pts, result.source === "ai" ? "ai_quiz" : "quiz_fallback");
+        u = addPts(u, pts, "ai_quiz");
         u.prog = { ...u.prog, quiz: { ...u.prog.quiz, main: { s: sc, total: qs.length, at: todayKey() } } }; save(u);
         if (sc >= 4) addBadge(u, "quiz_master");
         $("aiQuizRes").innerHTML = `<b>${sc}/${qs.length}</b> — +${pts} pts`;
@@ -4736,29 +2798,11 @@ function renderSimulate(user) {
     <h2>Learn Through Simulation</h2>
     <p class="sub">Interactive real-world scenarios. Watch metrics change as you make decisions.</p>
     <div class="gamesGrid" style="margin-top:12px">
-      <div class="gameCard" data-sim="credit" style="cursor:pointer">
-        <div style="font-size:36px;margin-bottom:8px">💳</div>
-        <h3>Credit Risk (Threshold Tuning)</h3>
-        <div class="sub">Choose an approval threshold. Trade off profit vs default risk. See outcomes change live.</div>
-        <div class="sub" style="margin-top:8px">Best profit: ${((user.prog.sims?.credit?.bestProfit ?? 0) | 0).toLocaleString()}</div>
-      </div>
       <div class="gameCard" data-sim="spam" style="cursor:pointer">
         <div style="font-size:36px;margin-bottom:8px">🚨</div>
         <h3>Spam Detector</h3>
         <div class="sub">Label emails. Watch precision & recall update live. Build an ML intuition for classification metrics.</div>
         <div class="sub" style="margin-top:8px">Accuracy: ${(user.prog.sims?.spam?.acc||0)*100|0}%</div>
-      </div>
-      <div class="gameCard" data-sim="inventory" style="cursor:pointer">
-        <div style="font-size:36px;margin-bottom:8px">📦</div>
-        <h3>Inventory Planning (Newsvendor)</h3>
-        <div class="sub">Pick how much to stock before demand arrives. Balance stockouts vs waste across many days.</div>
-        <div class="sub" style="margin-top:8px">Best avg profit/day: ${((user.prog.sims?.inventory?.bestAvg ?? 0) | 0).toLocaleString()}</div>
-      </div>
-      <div class="gameCard" data-sim="surge" style="cursor:pointer">
-        <div style="font-size:36px;margin-bottom:8px">🚕</div>
-        <h3>Ride Pricing (Surge)</h3>
-        <div class="sub">Set a surge multiplier. Higher price boosts supply but can reduce demand and trust.</div>
-        <div class="sub" style="margin-top:8px">Best revenue/min: ${((user.prog.sims?.surge?.bestRev ?? 0) | 0).toLocaleString()}</div>
       </div>
     </div>
   `;
@@ -4766,25 +2810,19 @@ function renderSimulate(user) {
     card.addEventListener("click", () => {
       const sim = card.dataset.sim;
       if (sim === "spam") startSpamSim(user);
-      if (sim === "credit") startCreditRiskSim(user);
-      if (sim === "inventory") startInventorySim(user);
-      if (sim === "surge") startSurgePricingSim(user);
     });
   });
 }
 
-function startSimShell() {
+function startSpamSim(user) {
   curView = "simulation";
   document.querySelectorAll(".view").forEach(v => hide(v));
   show($("v_simulation"));
   document.querySelectorAll(".navBtn").forEach(b => {
     b.classList.toggle("active", b.dataset.r === "simulate");
   });
-  return $("v_simulation");
-}
-
-function startSpamSim(user) {
-  const root = startSimShell();
+  
+  const root = $("v_simulation");
   const spamExamples = [
     { text: "Congratulations! You won a FREE prize. Click now!", label: "spam", keywords: ["FREE", "won", "click now"] },
     { text: "Your account has been compromised. Verify immediately.", label: "spam", keywords: ["compromised", "verify"] },
@@ -4911,417 +2949,19 @@ function startSpamSim(user) {
   renderEmail();
 }
 
-function startCreditRiskSim(user) {
-  const root = startSimShell();
-
-  // Simple "score -> default probability" portfolio. Choose threshold to maximize profit.
-  const N = 120;
-  const rng = () => Math.random();
-  const applicants = Array.from({ length: N }, () => {
-    const score = 300 + Math.floor(rng() * 551); // 300..850
-    // Default probability decreases with score; add noise.
-    const base = 1 / (1 + Math.exp((score - 630) / 55)); // ~sigmoid
-    const pDefault = clamp(base + (rng() - 0.5) * 0.08, 0.01, 0.75);
-    // Profit model: if repay -> earn interest; if default -> lose principal.
-    const principal = 5000 + Math.floor(rng() * 15001); // 5k..20k
-    const apr = 0.12 + (rng() * 0.16); // 12%..28%
-    return { score, pDefault, principal, apr };
-  });
-
-  const fmt$ = (n) => (n >= 0 ? "+" : "−") + "$" + Math.abs(Math.round(n)).toLocaleString();
-
-  function evaluate(threshold) {
-    let approved = 0, defaults = 0, repaid = 0;
-    let profit = 0;
-    applicants.forEach(a => {
-      if (a.score < threshold) return;
-      approved++;
-      const willDefault = rng() < a.pDefault;
-      if (willDefault) {
-        defaults++;
-        profit -= a.principal; // principal loss
-      } else {
-        repaid++;
-        profit += a.principal * a.apr; // interest income
-      }
-    });
-    const defaultRate = approved ? defaults / approved : 0;
-    return { approved, defaults, repaid, defaultRate, profit };
-  }
-
-  let threshold = 650;
-  let best = { threshold, profit: -Infinity };
-
-  function render() {
-    const r = evaluate(threshold);
-    if (r.profit > best.profit) best = { threshold, profit: r.profit };
-
-    root.innerHTML = `
-      <button class="btn sm ghost" onclick="goView('simulate')" style="margin-bottom:10px">← Back</button>
-      <h2 style="margin:0 0 4px">Credit Risk</h2>
-      <p class="sub" style="margin:0 0 14px">Set an approval threshold (credit score). Higher thresholds reduce defaults but also reduce revenue.</p>
-      <div class="g2" style="gap:12px">
-        <div class="panel">
-          <div class="panelTitle">Decision</div>
-          <div class="labCard" style="margin-top:10px">
-            <div class="labRow"><label>Threshold</label><span class="labMono" id="crTVal">${threshold}</span></div>
-            <input id="crT" type="range" min="300" max="850" step="5" value="${threshold}" />
-            <div class="sub" style="margin-top:8px">
-              Approve applicants with score ≥ <b>${threshold}</b>.
-            </div>
-          </div>
-          <div class="sub" style="margin-top:12px;padding:10px;background:var(--canvas);border-radius:12px;box-shadow:var(--neo-sm-in)">
-            <b>Business model (toy):</b> If they repay → earn interest. If they default → lose principal.
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button class="btn primary sm" id="crRun" type="button">Run simulation</button>
-            <button class="btn sm" id="crBest" type="button">Use best so far</button>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panelTitle">Outcomes (one run)</div>
-          <div class="vizMetric" style="margin-top:10px"><span class="label">Approved</span><span class="val" id="crApproved">—</span></div>
-          <div class="vizMetric"><span class="label">Defaults</span><span class="val" id="crDefaults">—</span></div>
-          <div class="vizMetric"><span class="label">Default%</span><span class="val" id="crDR">—</span></div>
-          <div class="vizMetric"><span class="label">Profit</span><span class="val" id="crProfit">—</span></div>
-          <div class="labCard" style="margin-top:12px">
-            <div class="sub"><b>Best so far:</b> threshold <b id="crBestT">${best.threshold}</b> • profit <b id="crBestP">${fmt$(best.profit)}</b></div>
-          </div>
-          <div class="sub" style="margin-top:12px">
-            Try sweeping the threshold: low thresholds approve more (more profit potential, more defaults), high thresholds are safer (but fewer approvals).
-          </div>
-        </div>
-      </div>
-    `;
-
-    const runOnce = () => {
-      const rr = evaluate(threshold);
-      $("crApproved").textContent = rr.approved;
-      $("crDefaults").textContent = rr.defaults;
-      $("crDR").textContent = (rr.defaultRate * 100).toFixed(1) + "%";
-      $("crProfit").textContent = fmt$(rr.profit);
-
-      // Persist best profit; award points for improvement.
-      const prevBest = user.prog?.sims?.credit?.bestProfit ?? -Infinity;
-      if (best.profit > prevBest) {
-        let u = me();
-        if (u) {
-          u.prog = { ...u.prog, sims: { ...u.prog.sims, credit: { bestProfit: best.profit, bestThreshold: best.threshold } } };
-          save(u);
-          addPts(u, 15, "simulation_credit_best");
-          updateChip();
-        }
-      } else {
-        let u = me();
-        if (u) addPts(u, 5, "simulation_credit_run");
-      }
-
-      $("crBestT").textContent = best.threshold;
-      $("crBestP").textContent = fmt$(best.profit);
-    };
-
-    $("crT").addEventListener("input", (e) => {
-      threshold = parseInt(e.target.value, 10);
-      $("crTVal").textContent = threshold;
-    });
-    $("crRun").addEventListener("click", runOnce);
-    $("crBest").addEventListener("click", () => {
-      threshold = best.threshold;
-      $("crT").value = threshold;
-      $("crTVal").textContent = threshold;
-      runOnce();
-    });
-
-    runOnce();
-  }
-
-  render();
-}
-
-function startInventorySim(user) {
-  const root = startSimShell();
-
-  // Newsvendor-like simulation: choose stock Q; daily demand ~ normal-ish.
-  let Q = 60;
-  const price = 12;
-  const cost = 6;
-  const salvage = 2;
-  const days = 60;
-
-  function sampleDemand() {
-    // approx normal via sum of uniforms
-    const u = (Math.random() + Math.random() + Math.random() + Math.random()) / 4; // ~0..1
-    return Math.max(0, Math.round(20 + u * 120)); // 20..140
-  }
-
-  function run(Qty) {
-    let revenue = 0, purchase = Qty * cost, salvageBack = 0;
-    let stockouts = 0, waste = 0;
-    const daily = [];
-    for (let d = 0; d < days; d++) {
-      const demand = sampleDemand();
-      const sold = Math.min(Qty, demand);
-      const leftover = Math.max(0, Qty - sold);
-      const missed = Math.max(0, demand - sold);
-      revenue += sold * price;
-      salvageBack += leftover * salvage;
-      stockouts += missed;
-      waste += leftover;
-      daily.push({ demand, sold, leftover, missed });
-    }
-    const profit = revenue + salvageBack - purchase;
-    const avg = profit / days;
-    return { profit, avg, revenue, salvageBack, purchase, stockouts, waste, daily };
-  }
-
-  let bestAvg = -Infinity;
-  let bestQ = Q;
-
-  function render() {
-    const res = run(Q);
-    if (res.avg > bestAvg) { bestAvg = res.avg; bestQ = Q; }
-
-    const last = res.daily.slice(-12);
-    const maxD = Math.max(1, ...last.map(x => x.demand));
-    const bars = last.map(x => {
-      const soldW = Math.round((x.sold / maxD) * 100);
-      const demandW = Math.round((x.demand / maxD) * 100);
-      return `
-        <div class="sub" style="display:grid;grid-template-columns:72px 1fr 60px;gap:10px;align-items:center">
-          <span class="labMono">D=${x.demand}</span>
-          <div style="height:12px;border-radius:999px;background:rgba(0,0,0,.06);overflow:hidden;box-shadow:var(--neo-sm-in);position:relative">
-            <div style="position:absolute;left:0;top:0;bottom:0;width:${demandW}%;background:rgba(107,158,158,.15)"></div>
-            <div style="position:absolute;left:0;top:0;bottom:0;width:${soldW}%;background:linear-gradient(90deg,var(--coral),var(--teal))"></div>
-          </div>
-          <span class="labMono" style="text-align:right">${x.leftover ? `+${x.leftover} left` : (x.missed ? `-${x.missed} miss` : "ok")}</span>
-        </div>`;
-    }).join("");
-
-    root.innerHTML = `
-      <button class="btn sm ghost" onclick="goView('simulate')" style="margin-bottom:10px">← Back</button>
-      <h2 style="margin:0 0 4px">Inventory Planning</h2>
-      <p class="sub" style="margin:0 0 14px">Choose stock \(Q\) before demand arrives. Profit = sales − cost + salvage for leftovers.</p>
-      <div class="g2" style="gap:12px">
-        <div class="panel">
-          <div class="panelTitle">Controls</div>
-          <div class="labCard" style="margin-top:10px">
-            <div class="labRow"><label>Stock (Q)</label><span class="labMono" id="invQVal">${Q}</span></div>
-            <input id="invQ" type="range" min="0" max="180" step="1" value="${Q}" />
-            <div class="sub" style="margin-top:8px">
-              Price=$${price}, Cost=$${cost}, Salvage=$${salvage}, Days=${days}
-            </div>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button class="btn primary sm" id="invRun" type="button">Run new season</button>
-            <button class="btn sm" id="invBest" type="button">Use best so far</button>
-          </div>
-          <div class="labCard" style="margin-top:12px">
-            <div class="sub"><b>Best so far:</b> Q=<b id="invBestQ">${bestQ}</b> • avg profit/day <b id="invBestAvg">${Math.round(bestAvg)}</b></div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panelTitle">Results</div>
-          <div class="vizMetric" style="margin-top:10px"><span class="label">Avg/day</span><span class="val" id="invAvg">${Math.round(res.avg)}</span></div>
-          <div class="vizMetric"><span class="label">Profit</span><span class="val" id="invProfit">${Math.round(res.profit).toLocaleString()}</span></div>
-          <div class="vizMetric"><span class="label">Stockouts</span><span class="val" id="invSO">${res.stockouts}</span></div>
-          <div class="vizMetric"><span class="label">Waste</span><span class="val" id="invWaste">${res.waste}</span></div>
-          <div class="sub" style="margin-top:12px"><b>Last 12 days</b> (teal=Demand, gradient=Sold)</div>
-          <div style="display:grid;gap:8px;margin-top:8px">${bars}</div>
-        </div>
-      </div>
-    `;
-
-    const persistIfBest = () => {
-      const prev = user.prog?.sims?.inventory?.bestAvg ?? -Infinity;
-      if (bestAvg > prev) {
-        let u = me();
-        if (u) {
-          u.prog = { ...u.prog, sims: { ...u.prog.sims, inventory: { bestAvg, bestQ } } };
-          save(u);
-          addPts(u, 15, "simulation_inventory_best");
-          updateChip();
-        }
-      } else {
-        let u = me();
-        if (u) addPts(u, 5, "simulation_inventory_run");
-      }
-    };
-
-    $("invQ").addEventListener("input", (e) => { Q = parseInt(e.target.value, 10); $("invQVal").textContent = Q; });
-    $("invRun").addEventListener("click", () => { render(); persistIfBest(); });
-    $("invBest").addEventListener("click", () => { Q = bestQ; $("invQ").value = Q; $("invQVal").textContent = Q; render(); persistIfBest(); });
-    $("invBestQ").textContent = bestQ;
-    $("invBestAvg").textContent = Math.round(bestAvg);
-  }
-
-  render();
-}
-
-function startSurgePricingSim(user) {
-  const root = startSimShell();
-
-  let surge = 1.2;
-  let baseDemand = 120; // riders/min at price=1x
-  let baseSupply = 85;  // drivers/min at 1x
-  let trust = 0.85;     // 0..1 affects future demand
-
-  const fare = 8;       // $ per ride
-  const driverShare = 0.75;
-
-  let bestRev = -Infinity;
-  let bestSurge = surge;
-
-  function stepOnce(mult) {
-    // Demand decreases with price and low trust.
-    const priceFactor = 1 / (1 + 1.6 * (mult - 1));
-    const demand = Math.max(0, Math.round(baseDemand * priceFactor * (0.65 + 0.7 * trust)));
-
-    // Supply increases with surge.
-    const supply = Math.max(0, Math.round(baseSupply * (0.85 + 0.65 * (mult - 1) + 0.4 * mult)));
-
-    const served = Math.min(demand, supply);
-    const unserved = Math.max(0, demand - served);
-    const idle = Math.max(0, supply - served);
-
-    const price = fare * mult;
-    const gross = served * price;
-    const platform = gross * (1 - driverShare);
-
-    // Update trust: too much surge or too many unserved riders hurts.
-    const surgePenalty = Math.max(0, mult - 1.4) * 0.08;
-    const waitPenalty = demand ? (unserved / demand) * 0.10 : 0;
-    const trustGain = idle > 0 ? 0.01 : 0; // if supply exceeds demand, riders feel it’s reliable
-    trust = clamp(trust + trustGain - surgePenalty - waitPenalty, 0.25, 0.98);
-
-    // Drift base demand/supply to simulate time variability.
-    baseDemand = clamp(baseDemand + (Math.random() - 0.5) * 10, 60, 180);
-    baseSupply = clamp(baseSupply + (Math.random() - 0.5) * 8, 40, 140);
-
-    return { demand, supply, served, unserved, idle, price, gross, platform, trust };
-  }
-
-  function render(run = false) {
-    const r = run ? stepOnce(surge) : null;
-    if (r && r.platform > bestRev) { bestRev = r.platform; bestSurge = surge; }
-
-    root.innerHTML = `
-      <button class="btn sm ghost" onclick="goView('simulate')" style="margin-bottom:10px">← Back</button>
-      <h2 style="margin:0 0 4px">Ride Pricing (Surge)</h2>
-      <p class="sub" style="margin:0 0 14px">Pick a surge multiplier. Higher prices can attract drivers but may reduce rider demand and trust.</p>
-      <div class="g2" style="gap:12px">
-        <div class="panel">
-          <div class="panelTitle">Controls</div>
-          <div class="labCard" style="margin-top:10px">
-            <div class="labRow"><label>Surge</label><span class="labMono" id="sgVal">${surge.toFixed(2)}×</span></div>
-            <input id="sg" type="range" min="1" max="2.5" step="0.05" value="${surge}" />
-            <div class="sub" style="margin-top:8px">Fare=$${fare} • Platform share=${Math.round((1 - driverShare) * 100)}%</div>
-          </div>
-          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-            <button class="btn primary sm" id="sgStep" type="button">Step 1 minute</button>
-            <button class="btn sm" id="sgBest" type="button">Use best so far</button>
-            <button class="btn ghost sm" id="sgReset" type="button">Reset market</button>
-          </div>
-          <div class="labCard" style="margin-top:12px">
-            <div class="sub"><b>Best so far:</b> ${bestSurge.toFixed(2)}× • platform revenue/min <b>$${Math.round(bestRev).toLocaleString()}</b></div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panelTitle">Market (latest minute)</div>
-          ${r ? `
-            <div class="vizMetric" style="margin-top:10px"><span class="label">Demand</span><span class="val">${r.demand}/min</span></div>
-            <div class="vizMetric"><span class="label">Supply</span><span class="val">${r.supply}/min</span></div>
-            <div class="vizMetric"><span class="label">Served</span><span class="val">${r.served}/min</span></div>
-            <div class="vizMetric"><span class="label">Unserved</span><span class="val">${r.unserved}/min</span></div>
-            <div class="vizMetric"><span class="label">Price</span><span class="val">$${r.price.toFixed(2)}</span></div>
-            <div class="vizMetric"><span class="label">Platform</span><span class="val">$${Math.round(r.platform).toLocaleString()}</span></div>
-            <div class="vizMetric"><span class="label">Trust</span><span class="val">${Math.round(r.trust * 100)}%</span></div>
-            <div class="pbar" style="margin-top:12px"><div style="width:${Math.round(r.trust * 100)}%"></div></div>
-          ` : `<div class="sub" style="margin-top:10px">Click <b>Step 1 minute</b> to simulate.</div>`}
-          <div class="sub" style="margin-top:12px;padding:10px;background:var(--canvas);border-radius:12px;box-shadow:var(--neo-sm-in)">
-            <b>What to notice:</b> If surge is too high, trust falls → future demand drops. If surge is too low, supply lags → many unserved riders.
-          </div>
-        </div>
-      </div>
-    `;
-
-    $("sg").addEventListener("input", (e) => { surge = parseFloat(e.target.value); $("sgVal").textContent = surge.toFixed(2) + "×"; });
-    $("sgStep").addEventListener("click", () => {
-      render(true);
-      const prev = user.prog?.sims?.surge?.bestRev ?? -Infinity;
-      if (bestRev > prev) {
-        let u = me();
-        if (u) {
-          u.prog = { ...u.prog, sims: { ...u.prog.sims, surge: { bestRev, bestSurge } } };
-          save(u);
-          addPts(u, 10, "simulation_surge_best");
-          updateChip();
-        }
-      } else {
-        let u = me();
-        if (u) addPts(u, 3, "simulation_surge_step");
-      }
-    });
-    $("sgBest").addEventListener("click", () => { surge = bestSurge; $("sg").value = surge; $("sgVal").textContent = surge.toFixed(2) + "×"; render(true); });
-    $("sgReset").addEventListener("click", () => {
-      surge = 1.2;
-      baseDemand = 120;
-      baseSupply = 85;
-      trust = 0.85;
-      $("sg").value = surge;
-      $("sgVal").textContent = surge.toFixed(2) + "×";
-      render(false);
-    });
-  }
-
-  render(false);
-}
-
 // ── Section 14: Leaderboard ─────────────────────────────────────
 function renderLeaderboard() {
   const root = $("v_leaderboard");
   const users = loadUsers().slice().sort((a, b) => (b.pts || 0) - (a.pts || 0)).slice(0, 20);
-  const top = users.slice(0, 10);
-  const maxPts = Math.max(1, ...top.map(u => u.pts || 0));
-  const meUser = me();
-  const myId = meUser?.id || "";
   root.innerHTML = `
     <h2>Leaderboard</h2>
-    <div class="panel" style="margin-bottom:14px">
-      <div class="lbHeader">
-        <div>
-          <div class="lbTitle">Top rankings</div>
-          <div class="sub">Sorted by points • showing top ${users.length}</div>
-        </div>
-      </div>
-      <div class="lbList" role="list">
-        ${users.map((u, i) => {
-          const pts = u.pts || 0;
-          const w = Math.round((pts / Math.max(1, users[0]?.pts || 1)) * 100);
-          const initials = (u.email || "U").split("@")[0].slice(0, 2).toUpperCase();
-          const isMe = myId && u.id === myId;
-          return `
-            <div class="lbCard ${isMe ? "me" : ""}" role="listitem">
-              <div class="lbLeft">
-                <div class="lbAvatar" aria-hidden="true">${esc(initials)}</div>
-                <div class="lbMeta">
-                  <div class="lbNameRow">
-                    <div class="lbName" title="${esc(u.email)}">${esc(u.email)}</div>
-                    ${i < 3 ? `<span class="lbCrown" title="Top ${i + 1}">${i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}</span>` : ""}
-                  </div>
-                  <div class="sub">streak <b>${u.streak?.n || 0}</b> • badges <b>${u.badges?.length || 0}</b></div>
-                  <div class="lbBarWrap" aria-hidden="true">
-                    <div class="lbBar" style="width:${w}%"></div>
-                  </div>
-                </div>
-              </div>
-              <div class="lbRight">
-                <div class="lbRankPill">#${i + 1}</div>
-                <div class="lbVal"><b>${pts}</b><div class="sub" style="margin-top:2px">pts</div></div>
-              </div>
-            </div>
-          `;
-        }).join("")}
-      </div>
+    <div class="panel">
+      <table class="tbl">
+        <thead><tr><th>#</th><th>User</th><th style="text-align:right">Points</th><th style="text-align:right">Streak</th><th style="text-align:right">Badges</th></tr></thead>
+        <tbody>
+          ${users.map((u, i) => `<tr><td>${i+1}</td><td>${esc(u.email)}</td><td style="text-align:right"><b>${u.pts||0}</b></td><td style="text-align:right">${u.streak?.n||0}</td><td style="text-align:right">${u.badges?.length||0}</td></tr>`).join("")}
+        </tbody>
+      </table>
     </div>
   `;
 }
@@ -5332,8 +2972,7 @@ let authMode = "login";
 function updateChip() {
   const u = me(), c = $("userChip");
   if (!u) { hide(c); return; }
-  const label = u.name || (u.email?.split("@")[0] || u.email);
-  c.textContent = `${label} · ${u.pts||0} pts · streak ${u.streak?.n||0}`;
+  c.textContent = `${u.email} · ${u.pts||0} pts · streak ${u.streak?.n||0}`;
   show(c);
 }
 
@@ -5417,10 +3056,6 @@ function boot() {
     clearSess();
     showAuth();
   });
-
-  // Make the top user chip open Profile quickly
-  $("userChip").addEventListener("click", () => goView("profile"));
-  $("userChip").style.cursor = "pointer";
 
   $("btnDemo").addEventListener("click", async () => {
     const users = loadUsers();
